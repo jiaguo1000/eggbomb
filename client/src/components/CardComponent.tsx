@@ -22,12 +22,9 @@ function getSuitSymbol(suit: Suit): string {
 const JokerCenter: React.FC<{ isBig: boolean; small?: boolean }> = ({ isBig, small }) => {
   if (small) {
     return (
-      <>
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '1rem', lineHeight: 1, filter: isBig ? 'none' : 'grayscale(1)' }}>🃏</div>
-        <div style={{ position: 'absolute', bottom: 2, right: 3, fontSize: '0.65rem', fontWeight: 700, color: isBig ? '#e74c3c' : '#555' }}>
-          {isBig ? '大' : '小'}
-        </div>
-      </>
+      <div style={{ position: 'absolute', bottom: '7px', right: '0px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontSize: '1.7rem', lineHeight: 1, filter: isBig ? 'none' : 'grayscale(1)' }}>🃏</span>
+      </div>
     );
   }
   return (
