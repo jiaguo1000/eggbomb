@@ -1010,7 +1010,7 @@ function finalizeDiceRoll(io: Server, room: Room): void {
       const r = getRoomByCode(room.code);
       if (!r || r.phase !== GamePhase.DICE_ROLLING) return;
       tiedIds.forEach((id) => delete r.diceRolls[id]);
-      r.diceTiedIds = [];
+      // Keep diceTiedIds so the client knows who is rerolling
       r.isRerollRound = true; // now the tied players need to roll again
       updateRoom(r);
       broadcastRoomUpdate(io, r);
@@ -1021,6 +1021,7 @@ function finalizeDiceRoll(io: Server, room: Room): void {
 
   diceRerollSets.delete(room.code);
   room.isRerollRound = false;
+  room.diceTiedIds = []; // clear now that a winner is determined
   const winner = tied[0];
   io.to(room.code).emit(SOCKET_EVENTS.DICE_ROLL, { rolls, winningSeat: winner.seat });
   setTimeout(() => {

@@ -607,18 +607,16 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
       {/* Dice rolling overlay */}
       {(currentRoom.phase === 'DICE_ROLLING' || diceResult) && !diceOverlayDone && (() => {
         const tiedIds = currentRoom.diceTiedIds ?? [];
-        const isTied = tiedIds.length > 0;
-        const isReroll = !diceResult && !isTied && (currentRoom.isRerollRound ?? false);
+        const isRerolling = tiedIds.length > 0 && (currentRoom.isRerollRound ?? false);
+        const isShowingTie = tiedIds.length > 0 && !isRerolling;
         const iAmTied = tiedIds.includes(playerId);
         return (
         <div style={overlayStyles.overlay}>
           <div style={overlayStyles.panel}>
-            <div style={overlayStyles.title}>{isTied ? '平局！' : isReroll ? '平局！再投一次' : '掷骰子决定先手'}</div>
-            {(isTied || isReroll) && (
+            <div style={overlayStyles.title}>{isShowingTie ? '平局！' : isRerolling ? '平局！再投一次' : '掷骰子决定先手'}</div>
+            {(isShowingTie || isRerolling) && (
               <div style={{ color: '#ff9800', fontSize: '0.85rem', marginBottom: '4px' }}>
-                {isTied
-                  ? `${tiedIds.map((id: string) => currentRoom.players.find(p => p.id === id)?.name ?? id).join(' 和 ')} 平局，稍后重新掷骰`
-                  : '最高点数平局，以下玩家需要重新掷骰'}
+                {`${tiedIds.map((id: string) => currentRoom.players.find(p => p.id === id)?.name ?? id).join(' 和 ')} 平局${isShowingTie ? '，稍后重新掷骰' : '，需要重新掷骰'}`}
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
@@ -646,14 +644,14 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
               >
                 明白了，开始游戏！
               </button>
-            ) : isTied ? (
+            ) : isShowingTie ? (
               <div style={{ ...overlayStyles.hint, color: '#ff9800' }}>平局结果展示中...</div>
             ) : currentRoom.diceRolls?.[playerId] === undefined ? (
               <button
-                style={{ ...modalStyles.choiceBtn, marginTop: '8px', width: '100%', justifyContent: 'center', background: iAmTied || isReroll ? 'linear-gradient(135deg, #ff9800, #f57c00)' : 'linear-gradient(135deg, #ffd700, #ffb300)', color: '#1a1a1a' }}
+                style={{ ...modalStyles.choiceBtn, marginTop: '8px', width: '100%', justifyContent: 'center', background: iAmTied ? 'linear-gradient(135deg, #ff9800, #f57c00)' : 'linear-gradient(135deg, #ffd700, #ffb300)', color: '#1a1a1a' }}
                 onClick={() => socket.emit(SOCKET_EVENTS.ROLL_DICE)}
               >
-                🎲 {isReroll ? '重新掷骰子！' : '掷骰子！'}
+                🎲 {isRerolling ? '重新掷骰子！' : '掷骰子！'}
               </button>
             ) : (
               <div style={overlayStyles.hint}>等待其他玩家掷骰子...</div>
