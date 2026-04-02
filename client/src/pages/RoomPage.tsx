@@ -84,18 +84,16 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
   return (
     <div style={styles.container}>
       {/* Header */}
-      <div style={{ ...styles.header, ...(compact ? { padding: '0.4rem 0.75rem', gap: '0.4rem' } : {}) }}>
+      <div style={{ ...styles.header, ...(compact ? { padding: '0.2rem 0.75rem', gap: '0.3rem' } : {}) }}>
         <button style={{ ...styles.leaveBtn, ...(compact ? { fontSize: '0.75rem', padding: '0.3rem 0.7rem' } : {}) }} onClick={onLeave}>
           ← 离开
         </button>
         <div style={styles.headerCenter}>
-          <span style={styles.phaseTag}>{phaseLabels[room.phase] ?? room.phase}</span>
-          <span style={styles.playerCount}>
-            {allPlayersCount}/4 人 · {readyCount} 准备
-          </span>
+          <span style={{ ...styles.phaseTag, ...(compact ? { fontSize: '0.68rem', padding: '0.15rem 0.5rem' } : {}) }}>{phaseLabels[room.phase] ?? room.phase}</span>
+          {!compact && <span style={styles.playerCount}>{allPlayersCount}/4 人 · {readyCount} 准备</span>}
         </div>
         <div style={styles.roomCode}>
-          <span style={styles.roomCodeLabel}>房间号</span>
+          {!compact && <span style={styles.roomCodeLabel}>房间号</span>}
           <button style={styles.roomCodeBtn} onClick={handleCopyCode} title="点击复制">
             <span style={{ ...styles.roomCodeText, ...(compact ? { fontSize: '0.85rem' } : {}) }}>{room.code}</span>
             <span style={{ ...styles.copyHint, ...(compact ? { fontSize: '0.62rem' } : {}) }}>{copied ? '已复制!' : '复制'}</span>
@@ -213,7 +211,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
       </div>
 
       {/* Action bar */}
-      <div style={{ ...styles.actionBar, ...(compact ? { padding: '0.4rem 1rem' } : {}) }}>
+      <div style={{ ...styles.actionBar, ...(compact ? { padding: '0.2rem 1rem' } : {}) }}>
         {!hasSeat ? (
           <p style={{ ...styles.actionHint, ...(compact ? { fontSize: '0.75rem' } : {}) }}>点击空座位入座</p>
         ) : (
@@ -231,9 +229,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
             {isReady ? '✓ 已准备 (取消)' : '准备'}
           </button>
         )}
-        <p style={styles.seatedStatus}>
-          {seatedCount}/4 人已入座
-        </p>
+        {!compact && <p style={styles.seatedStatus}>{seatedCount}/4 人已入座</p>}
       </div>
     </div>
   );

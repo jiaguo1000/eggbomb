@@ -269,9 +269,9 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
     <div style={styles.container}>
       <style>{`@keyframes pulse { from { opacity: 1; transform: scale(1); } to { opacity: 0.7; transform: scale(1.06); } }`}</style>
       {/* Header bar */}
-      <div style={{ ...styles.header, ...(compact ? { padding: '4px 10px' } : {}) }}>
-        <span style={styles.headerInfo}>房间：{currentRoom.code}</span>
-        <div style={styles.headerLevels}>
+      <div style={{ ...styles.header, ...(compact ? { padding: '2px 8px' } : {}) }}>
+        <span style={{ ...styles.headerInfo, ...(compact ? { fontSize: '0.7rem' } : {}) }}>房间：{currentRoom.code}</span>
+        <div style={{ ...styles.headerLevels, ...(compact ? { gap: '6px' } : {}) }}>
           {[0, 1].map((team) => {
             const lvl = currentRoom.currentLevel[team as 0 | 1];
             const lvlLabel = levelLabels[lvl - 2] ?? 'A';
@@ -281,7 +281,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
             const isPlayingAce = lvl === 14 && failures > 0;
             const isPlaying = playingTeam === team;
             return (
-              <span key={team} style={{ ...styles.teamLevel, ...(isMine ? styles.teamLevelMine : {}), ...(isPlaying && !isMine ? styles.teamLevelPlaying : {}) }}>
+              <span key={team} style={{ ...styles.teamLevel, ...(isMine ? styles.teamLevelMine : {}), ...(isPlaying && !isMine ? styles.teamLevelPlaying : {}), ...(compact ? { fontSize: '0.7rem', padding: '1px 5px' } : {}) }}>
                 {teamName}: {lvlLabel}
                 {isPlaying && <span style={{ color: '#ffd700', marginLeft: '5px', fontSize: '0.7rem', fontWeight: 700, background: 'rgba(255,215,0,0.15)', borderRadius: '3px', padding: '0 4px' }}>本盘</span>}
                 {isPlayingAce && (
@@ -293,11 +293,11 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
             );
           })}
         </div>
-        <button style={styles.leaveBtn} onClick={onLeave}>离开</button>
+        <button style={{ ...styles.leaveBtn, ...(compact ? { fontSize: '0.72rem', padding: '2px 8px' } : {}) }} onClick={onLeave}>离开</button>
       </div>
 
       {/* Game table */}
-      <div style={{ ...styles.table, ...(compact ? { padding: '4px 8px', gap: '4px' } : {}) }}>
+      <div style={{ ...styles.table, ...(compact ? { padding: '2px 8px', gap: '2px' } : {}) }}>
 
         {/* Top opponent + their play */}
         <div style={{ ...styles.topArea, ...(compact ? { height: 'auto' } : {}) }}>
@@ -456,18 +456,18 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
           {(() => {
             const isManaged = (currentRoom.managedPlayerIds ?? []).includes(playerId);
             return (
-              <div style={{ ...styles.actions, ...(compact ? { gap: '6px' } : {}) }}>
+              <div style={{ ...styles.actions, ...(compact ? { gap: '6px', minHeight: '24px' } : { minHeight: '40px' }) }}>
                 {!isManaged && (
                   <>
                     <button
-                      style={{ ...styles.actionBtn, ...styles.clearBtn, ...(compact ? { padding: '4px 12px', fontSize: '0.88rem' } : {}) }}
+                      style={{ ...styles.actionBtn, ...styles.clearBtn, ...(compact ? { padding: '2px 10px', fontSize: '0.88rem' } : {}) }}
                       onClick={() => setSelectedIds(new Set())}
                       disabled={selectedIds.size === 0}
                     >
                       取消
                     </button>
                     {canPass && (
-                      <button style={{ ...styles.actionBtn, ...styles.passBtn, ...(compact ? { padding: '4px 12px', fontSize: '0.88rem' } : {}) }} onClick={handlePass}>
+                      <button style={{ ...styles.actionBtn, ...styles.passBtn, ...(compact ? { padding: '2px 10px', fontSize: '0.88rem' } : {}) }} onClick={handlePass}>
                         过
                       </button>
                     )}
@@ -475,7 +475,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                       style={{
                         ...styles.actionBtn,
                         ...styles.playBtn,
-                        ...(compact ? { padding: '4px 12px', fontSize: '0.88rem' } : {}),
+                        ...(compact ? { padding: '2px 10px', fontSize: '0.88rem' } : {}),
                         ...(!isMyTurn || selectedIds.size === 0 ? styles.disabledBtn : {}),
                       }}
                       onClick={handlePlay}
@@ -484,7 +484,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                       出牌 {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
                     </button>
                     <button
-                      style={{ ...styles.actionBtn, ...styles.hintBtn, ...(compact ? { padding: '6px 12px', fontSize: '0.88rem' } : {}), ...(!isMyTurn ? styles.disabledBtn : {}) }}
+                      style={{ ...styles.actionBtn, ...styles.hintBtn, ...(compact ? { padding: '2px 10px', fontSize: '0.88rem' } : {}), ...(!isMyTurn ? styles.disabledBtn : {}) }}
                       onClick={() => socket.emit(SOCKET_EVENTS.GET_HINT)}
                       disabled={!isMyTurn}
                     >
@@ -493,10 +493,10 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                   </>
                 )}
                 {isManaged && (
-                  <div style={{ ...styles.managedBanner, ...(compact ? { fontSize: '0.78rem', padding: '4px 10px' } : {}) }}>托管中，系统自动出牌</div>
+                  <div style={{ ...styles.managedBanner, ...(compact ? { fontSize: '0.78rem', padding: '2px 8px' } : {}) }}>托管中，系统自动出牌</div>
                 )}
                 <button
-                  style={{ ...styles.actionBtn, ...(isManaged ? styles.managedActiveBtn : styles.managedBtn), ...(compact ? { padding: '4px 12px', fontSize: '0.85rem' } : {}) }}
+                  style={{ ...styles.actionBtn, ...(isManaged ? styles.managedActiveBtn : styles.managedBtn), ...(compact ? { padding: '2px 10px', fontSize: '0.85rem' } : {}) }}
                   onClick={() => socket.emit(SOCKET_EVENTS.TOGGLE_MANAGE)}
                 >
                   {isManaged ? '取消托管' : '托管'}
@@ -1028,12 +1028,13 @@ const OpponentDisplay: React.FC<{
     <div style={{ ...oppStyles.name, ...(compact ? { fontSize: '0.75rem', marginBottom: '2px' } : {}) }}>
       {player.name} ({SEAT_LABELS[player.seat ?? 0]})
       {compact && !isFinished && <span style={{ color: '#4fc3f7', fontWeight: 700, marginLeft: '5px' }}>牌数：{handCount <= 10 ? handCount : '?'}</span>}
+      {compact && isFinished && <span style={{ color: '#81c784', fontWeight: 700, marginLeft: '5px', fontSize: '0.72rem' }}>已出完 🎉</span>}
     </div>
-    {isFinished ? (
-      <div style={{ ...oppStyles.finished, ...(compact ? { fontSize: '0.72rem' } : {}) }}>已出完 🎉</div>
+    {!compact && (isFinished ? (
+      <div style={oppStyles.finished}>已出完 🎉</div>
     ) : (
-      !compact && <div style={oppStyles.cardCount}>{handCount <= 10 ? `牌数：${handCount}` : '牌数：？'}</div>
-    )}
+      <div style={oppStyles.cardCount}>{handCount <= 10 ? `牌数：${handCount}` : '牌数：？'}</div>
+    ))}
     <div style={{ height: '20px', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
       {isCurrentTurn && !isDisconnected && <span style={oppStyles.turnBadge}>出牌中</span>}
       {isDisconnected && <span style={oppStyles.disconnectedBadge}>断线中</span>}
