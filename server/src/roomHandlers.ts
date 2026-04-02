@@ -1399,9 +1399,9 @@ function scheduleRoomCleanup(io: Server, room: Room): void {
       deleteRoom(r.code);
       console.log(`[Room] Room ${r.code} deleted — all humans disconnected for 1 hour`);
     }
-  }, 60 * 60 * 1000);
+  }, 30 * 60 * 1000);
   roomCleanupTimers.set(room.code, timer);
-  console.log(`[Room] Room ${room.code} — all humans disconnected, will delete in 1 hour`);
+  console.log(`[Room] Room ${room.code} — all humans disconnected, will delete in 30 minutes`);
 }
 
 function handleLeave(io: Server, socket: Socket): void {
