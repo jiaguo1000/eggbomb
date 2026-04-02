@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Room, Player, PlayerSeat, SOCKET_EVENTS } from '@eggbomb/shared';
 import socket from '../socket';
 import SeatDisplay from '../components/SeatDisplay';
+import { useCompact } from '../hooks/useCompact';
 
 const LEVEL_LABELS: Record<number, string> = {
   2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7',
@@ -27,6 +28,7 @@ interface RoomPageProps {
  */
 
 const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
+  const compact = useCompact();
   const [copied, setCopied] = useState(false);
 
   const me = room.players.find((p) => p.id === playerId);
@@ -82,7 +84,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
   return (
     <div style={styles.container}>
       {/* Header */}
-      <div style={styles.header}>
+      <div style={{ ...styles.header, ...(compact ? { padding: '0.4rem 0.75rem', gap: '0.4rem' } : {}) }}>
         <button style={styles.leaveBtn} onClick={onLeave}>
           ← 离开
         </button>
@@ -102,12 +104,12 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
       </div>
 
       {/* Table layout */}
-      <div style={styles.tableWrapper}>
-        <div style={styles.tableGrid}>
+      <div style={{ ...styles.tableWrapper, ...(compact ? { padding: '0.2rem 0.5rem' } : {}) }}>
+        <div style={{ ...styles.tableGrid, ...(compact ? { gap: '0.3rem', maxWidth: '560px' } : {}) }}>
           {/* North */}
           <div style={{ gridArea: 'north', display: 'flex', justifyContent: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-              <SeatDisplay seat={2} player={getPlayerAtSeat(2)} isCurrentPlayer={me?.seat === 2} onSitDown={handleSitDown} />
+            <div style={{ display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: 'center', gap: '4px' }}>
+              <SeatDisplay seat={2} player={getPlayerAtSeat(2)} isCurrentPlayer={me?.seat === 2} onSitDown={handleSitDown} compact={compact} />
               {!getPlayerAtSeat(2) && (
                 <button style={isHost ? styles.botBtn : styles.botBtnDisabled} disabled={!isHost} title={isHost ? '' : '只有房主可以添加机器人'} onClick={() => handleAddBot(2 as PlayerSeat)}>+机器人</button>
               )}
@@ -119,8 +121,8 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
 
           {/* West */}
           <div style={{ gridArea: 'west', display: 'flex', alignItems: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-              <SeatDisplay seat={1} player={getPlayerAtSeat(1)} isCurrentPlayer={me?.seat === 1} onSitDown={handleSitDown} />
+            <div style={{ display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: 'center', gap: '4px' }}>
+              <SeatDisplay seat={1} player={getPlayerAtSeat(1)} isCurrentPlayer={me?.seat === 1} onSitDown={handleSitDown} compact={compact} />
               {!getPlayerAtSeat(1) && (
                 <button style={isHost ? styles.botBtn : styles.botBtnDisabled} disabled={!isHost} title={isHost ? '' : '只有房主可以添加机器人'} onClick={() => handleAddBot(1 as PlayerSeat)}>+机器人</button>
               )}
@@ -132,8 +134,8 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
 
           {/* Center table */}
           <div style={styles.tableCenter}>
-            <div style={styles.tableInner}>
-              <span style={styles.tableTitle}>掼蛋</span>
+            <div style={{ ...styles.tableInner, ...(compact ? { width: '160px', padding: '0.4rem 0.6rem', gap: '0.3rem' } : {}) }}>
+              {!compact && <span style={styles.tableTitle}>掼蛋</span>}
               <div style={styles.teamInfo}>
                 <div style={styles.teamRow}>
                   <span style={{ ...styles.teamDot, background: '#4fc3f7' }} />
@@ -153,7 +155,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
               <div style={styles.startLevelSection}>
                 <span style={styles.startLevelLabel}>起始</span>
                 <div style={styles.startLevelPicker}>
-                  {[[2,3,4,5,6,7,8,9,10],[11,12,13,14]].map((row, ri) => (
+                  {(compact ? [[2,3,4,5,6],[7,8,9,10],[11,12,13,14]] : [[2,3,4,5,6,7,8,9,10],[11,12,13,14]]).map((row, ri) => (
                     <div key={ri} style={styles.startLevelRow}>
                       {row.map((lv) => (
                         <button
@@ -184,8 +186,8 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
 
           {/* East */}
           <div style={{ gridArea: 'east', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-              <SeatDisplay seat={3} player={getPlayerAtSeat(3)} isCurrentPlayer={me?.seat === 3} onSitDown={handleSitDown} />
+            <div style={{ display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: 'center', gap: '4px' }}>
+              <SeatDisplay seat={3} player={getPlayerAtSeat(3)} isCurrentPlayer={me?.seat === 3} onSitDown={handleSitDown} compact={compact} />
               {!getPlayerAtSeat(3) && (
                 <button style={isHost ? styles.botBtn : styles.botBtnDisabled} disabled={!isHost} title={isHost ? '' : '只有房主可以添加机器人'} onClick={() => handleAddBot(3 as PlayerSeat)}>+机器人</button>
               )}
@@ -197,8 +199,8 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
 
           {/* South */}
           <div style={{ gridArea: 'south', display: 'flex', justifyContent: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-              <SeatDisplay seat={0} player={getPlayerAtSeat(0)} isCurrentPlayer={me?.seat === 0} onSitDown={handleSitDown} />
+            <div style={{ display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: 'center', gap: '4px' }}>
+              <SeatDisplay seat={0} player={getPlayerAtSeat(0)} isCurrentPlayer={me?.seat === 0} onSitDown={handleSitDown} compact={compact} />
               {!getPlayerAtSeat(0) && (
                 <button style={isHost ? styles.botBtn : styles.botBtnDisabled} disabled={!isHost} title={isHost ? '' : '只有房主可以添加机器人'} onClick={() => handleAddBot(0 as PlayerSeat)}>+机器人</button>
               )}
@@ -211,7 +213,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
       </div>
 
       {/* Action bar */}
-      <div style={styles.actionBar}>
+      <div style={{ ...styles.actionBar, ...(compact ? { padding: '0.4rem 1rem' } : {}) }}>
         {!hasSeat ? (
           <p style={styles.actionHint}>点击空座位入座</p>
         ) : (
@@ -222,6 +224,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
                 ? 'linear-gradient(135deg, #388e3c, #2e7d32)'
                 : 'linear-gradient(135deg, #ffd700, #ffb300)',
               color: isReady ? '#e8f5e9' : '#1a1a1a',
+              ...(compact ? { padding: '0.5rem 1.5rem', fontSize: '0.9rem' } : {}),
             }}
             onClick={handleToggleReady}
           >

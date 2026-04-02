@@ -66,7 +66,7 @@ function getSocketPlayer(socket: Socket, room: Room): Player | null {
 const diceRerollSets = new Map<string, Set<string>>();
 // playerId key `${roomCode}:${playerId}` -> reconnect grace-period timer
 const disconnectTimers = new Map<string, NodeJS.Timeout>();
-// roomCode -> cleanup timer (delete room when all humans disconnected for 1h)
+// roomCode -> cleanup timer (delete room when all humans disconnected for 30min)
 const roomCleanupTimers = new Map<string, NodeJS.Timeout>();
 
 export function registerRoomHandlers(io: Server, socket: Socket): void {
@@ -225,6 +225,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     room.players.push(botPlayer);
     updateRoom(room);
     broadcastRoomUpdate(io, room);
+    console.log(`[Room] Room ${room.code} — 添加机器人 ${botPlayer.name} (座位 ${seat})`);
 
     if (isRoomReady(room)) {
       startGame(io, room);
@@ -247,6 +248,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     room.players = room.players.filter((p) => p.id !== bot.id);
     updateRoom(room);
     broadcastRoomUpdate(io, room);
+    console.log(`[Room] Room ${room.code} — 移除机器人 ${bot.name} (座位 ${seat})`);
   });
 
   // ── toggle_manage ─────────────────────────────────────────────────────────
@@ -995,8 +997,11 @@ function finalizeDiceRoll(io: Server, room: Room): void {
     name: p.name,
     roll: room.diceRolls[p.id] ?? 1,
   }));
-  const maxRoll = Math.max(...rolls.map((r) => r.roll));
-  const tied = rolls.filter((r) => r.roll === maxRoll);
+  // In a reroll round, only compare the players who actually rerolled
+  const rerollSet = diceRerollSets.get(room.code);
+  const contestRolls = rerollSet ? rolls.filter((r) => rerollSet.has(r.playerId)) : rolls;
+  const maxRoll = Math.max(...contestRolls.map((r) => r.roll));
+  const tied = contestRolls.filter((r) => r.roll === maxRoll);
 
   if (tied.length > 1) {
     // Tie — keep all rolls visible for 2s so players can see who tied, then reset
@@ -1398,7 +1403,7 @@ function scheduleRoomCleanup(io: Server, room: Room): void {
       .every((p) => (r.disconnectedPlayerIds ?? []).includes(p.id));
     if (stillAllGone) {
       deleteRoom(r.code);
-      console.log(`[Room] Room ${r.code} deleted — all humans disconnected for 1 hour`);
+      console.log(`[Room] Room ${r.code} deleted — all humans disconnected for 30 minutes`);
     }
   }, 30 * 60 * 1000);
   roomCleanupTimers.set(room.code, timer);

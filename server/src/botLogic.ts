@@ -236,17 +236,13 @@ function findSmallestBombBeating(normals: Card[], wildcards: Card[], required: i
   return null;
 }
 
-function isTeammatesBigPlay(lastPlay: LastPlay, teammateId: string | undefined, currentLevel: number): boolean {
+function isTeammatesBigPlay(lastPlay: LastPlay, teammateId: string | undefined, _currentLevel: number): boolean {
   if (!teammateId || lastPlay.playerId !== teammateId) return false;
-  const cards = lastPlay.cards;
   // Any bomb
   if (isBombType(lastPlay.hand.type)) return true;
-  // Contains a joker (大王 or 小王)
-  if (cards.some(c => c.suit === Suit.JOKER)) return true;
-  // Contains a level card (level 14 = A maps to card rank 1)
-  const levelRank = currentLevel === 14 ? 1 : currentLevel;
-  if (cards.some(c => c.rank === levelRank && c.suit !== Suit.JOKER)) return true;
-  return false;
+  // hand.rank uses game values: J=11, Q=12, K=13, A=14, level card=16, small joker=17, big joker=18
+  // For TRIPLE_PAIR, hand.rank is the rank of the triple part (not the pair part)
+  return lastPlay.hand.rank >= 11;
 }
 
 export function getBotMove(

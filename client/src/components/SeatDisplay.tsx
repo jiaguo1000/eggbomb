@@ -6,6 +6,7 @@ interface SeatDisplayProps {
   player?: Player;
   isCurrentPlayer: boolean;
   onSitDown: (seat: PlayerSeat) => void;
+  compact?: boolean;
 }
 
 const SEAT_LABELS: Record<PlayerSeat, string> = {
@@ -20,7 +21,7 @@ const TEAM_COLORS: Record<number, string> = {
   1: '#ef9a9a', // Team 1 (seats 1 & 3) — red
 };
 
-const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer, onSitDown }) => {
+const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer, onSitDown, compact }) => {
   const isEmpty = !player;
   const teamColor = player?.teamId !== null && player?.teamId !== undefined
     ? TEAM_COLORS[player.teamId]
@@ -38,6 +39,7 @@ const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer
         ...styles.seat,
         ...(isEmpty ? styles.emptySeat : styles.occupiedSeat),
         ...(isCurrentPlayer ? styles.currentPlayerSeat : {}),
+        ...(compact ? { minHeight: '44px', minWidth: '68px', padding: '0.15rem 0.35rem', gap: '0.1rem' } : {}),
         cursor: isEmpty ? 'pointer' : 'default',
         borderColor: isCurrentPlayer ? '#ffd700' : isEmpty ? 'rgba(255,255,255,0.15)' : teamColor,
       }}
@@ -47,31 +49,33 @@ const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer
       {/* Seat label */}
       <span style={styles.seatLabel}>{SEAT_LABELS[seat]}</span>
 
-      {/* Avatar / icon */}
-      <div
-        style={{
-          ...styles.avatar,
-          background: isEmpty
-            ? 'rgba(255,255,255,0.05)'
-            : `radial-gradient(circle, ${teamColor}33, ${teamColor}11)`,
-          borderColor: isEmpty ? 'rgba(255,255,255,0.1)' : teamColor,
-        }}
-      >
-        {isEmpty ? (
-          <span style={styles.plusIcon}>+</span>
-        ) : (
-          <span style={styles.playerInitial}>
-            {player!.name.charAt(0).toUpperCase()}
-          </span>
-        )}
-      </div>
+      {/* Avatar / icon — hidden in compact */}
+      {!compact && (
+        <div
+          style={{
+            ...styles.avatar,
+            background: isEmpty
+              ? 'rgba(255,255,255,0.05)'
+              : `radial-gradient(circle, ${teamColor}33, ${teamColor}11)`,
+            borderColor: isEmpty ? 'rgba(255,255,255,0.1)' : teamColor,
+          }}
+        >
+          {isEmpty ? (
+            <span style={styles.plusIcon}>+</span>
+          ) : (
+            <span style={styles.playerInitial}>
+              {player!.name.charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Player info or empty state */}
       {isEmpty ? (
         <span style={styles.emptyText}>空座位</span>
       ) : (
         <>
-          <span style={{ ...styles.playerName, color: isCurrentPlayer ? '#ffd700' : '#e0e0e0' }}>
+          <span style={{ ...styles.playerName, ...(compact ? { fontSize: '0.72rem' } : {}), color: isCurrentPlayer ? '#ffd700' : '#e0e0e0' }}>
             {player!.name}
             {isCurrentPlayer && ' (你)'}
           </span>

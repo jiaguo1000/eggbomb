@@ -23,6 +23,22 @@
         margin: 0;
         padding: 0;
       }
+      #rotate-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: #0f2027;
+        z-index: 99999;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        text-align: center;
+        gap: 12px;
+      }
+      @media screen and (orientation: portrait) and (max-width: 767px) {
+        #rotate-overlay { display: flex !important; }
+      }
 
       body {
         font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
@@ -37,6 +53,11 @@
     </style>
   </head>
   <body>
+    <div id="rotate-overlay">
+      <div style="font-size:3rem">📱</div>
+      <div style="font-size:1.2rem;font-weight:700">请旋转设备横屏</div>
+      <div style="font-size:0.85rem;color:#888">Please rotate your device</div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

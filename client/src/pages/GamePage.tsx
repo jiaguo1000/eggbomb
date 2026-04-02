@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Room, Card, Suit, PlayerSeat, HandType, HandResult, SOCKET_EVENTS, CardsPlayedPayload, classifyAllPossible, isBomb, GameResult, TributeState, getGameValue, DiceRollPayload } from '@eggbomb/shared';
 import socket from '../socket';
 import CardComponent from '../components/CardComponent';
+import { useCompact } from '../hooks/useCompact';
 
 interface GamePageProps {
   room: Room;
@@ -38,6 +39,7 @@ function getDisplayValue(card: Card, currentLevel: number): number {
 const SEAT_LABELS = ['南', '西', '北', '东'];
 
 const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel, onLeave }) => {
+  const compact = useCompact();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [myHand, setMyHand] = useState<Card[]>(hand);
   const [currentRoom, setCurrentRoom] = useState<Room>(room);
@@ -55,6 +57,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
   const [tributeReveal, setTributeReveal] = useState<{ fromName: string; toName: string; tributeCard: Card | null; returnCard: Card | null }[] | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoPlayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasPlayedFirstCardRef = useRef(false);
 
   const me = currentRoom.players.find((p) => p.id === playerId);
   const mySeat = me?.seat ?? 0;
@@ -69,7 +72,8 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
   useEffect(() => {
     const isManaged = (currentRoom.managedPlayerIds ?? []).includes(playerId);
     if (isMyTurn && !isManaged && currentRoom.phase === 'PLAYING') {
-      setTurnCountdown(30);
+      const turnLimit = hasPlayedFirstCardRef.current ? 30 : 60;
+      setTurnCountdown(turnLimit);
       countdownRef.current = setInterval(() => {
         setTurnCountdown((prev) => {
           if (prev === null || prev <= 1) return null;
@@ -78,7 +82,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
       }, 1000);
       autoPlayRef.current = setTimeout(() => {
         socket.emit(SOCKET_EVENTS.AUTO_PLAY);
-      }, 30000);
+      }, turnLimit * 1000);
     } else {
       setTurnCountdown(null);
       if (countdownRef.current) { clearInterval(countdownRef.current); countdownRef.current = null; }
@@ -100,25 +104,20 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
     };
 
     const handleCardsPlayed = (payload: CardsPlayedPayload) => {
-      const player = currentRoom.players.find((p) => p.id === payload.playerId);
       if (payload.playerId === playerId) {
         setMyHand((prev) => sortHand(prev.filter((c) => !payload.cards.find((pc) => pc.id === c.id)), currentLevel));
         setSelectedIds(new Set());
+        hasPlayedFirstCardRef.current = true;
       }
-      showMessage(`${player?.name ?? '?'} 出了 ${handTypeLabel(payload.hand.type)}`);
     };
 
     const handlePassTurn = (payload: { playerId: string; seat: PlayerSeat }) => {
-      const player = currentRoom.players.find((p) => p.id === payload.playerId);
-      showMessage(`${player?.name ?? '?'} 过`);
       if (payload.playerId === playerId) setSelectedIds(new Set());
       setPassedSeats(prev => { const n = new Set(prev); n.add(payload.seat as PlayerSeat); return n; });
     };
 
     const handlePlayerFinished = (payload: { playerId: string; finishPosition: number }) => {
-      const player = currentRoom.players.find((p) => p.id === payload.playerId);
       setFinishedPlayers((prev) => new Set([...prev, payload.playerId]));
-      showMessage(`🎉 ${player?.name ?? '?'} 第 ${payload.finishPosition} 个出完！`);
     };
 
     const handleGameEnded = (payload: { gameResult: GameResult }) => {
@@ -155,6 +154,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
       setSelectedIds(new Set());
       setFinishedPlayers(new Set());
       setPassedSeats(new Set());
+      hasPlayedFirstCardRef.current = false;
     };
 
     socket.on(SOCKET_EVENTS.ROOM_UPDATE, handleRoomUpdate);
@@ -269,7 +269,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
     <div style={styles.container}>
       <style>{`@keyframes pulse { from { opacity: 1; transform: scale(1); } to { opacity: 0.7; transform: scale(1.06); } }`}</style>
       {/* Header bar */}
-      <div style={styles.header}>
+      <div style={{ ...styles.header, ...(compact ? { padding: '4px 10px' } : {}) }}>
         <span style={styles.headerInfo}>房间：{currentRoom.code}</span>
         <div style={styles.headerLevels}>
           {[0, 1].map((team) => {
@@ -297,51 +297,63 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
       </div>
 
       {/* Game table */}
-      <div style={styles.table}>
+      <div style={{ ...styles.table, ...(compact ? { padding: '4px 8px', gap: '4px' } : {}) }}>
 
         {/* Top opponent + their play */}
-        <div style={styles.topArea}>
+        <div style={{ ...styles.topArea, ...(compact ? { height: 'auto' } : {}) }}>
           {opponentTop ? (
-            <div style={styles.opponentWithPlay}>
-              <OpponentDisplay player={opponentTop} handCount={getHandCount(opponentTop.id)} isCurrentTurn={currentRoom.currentTurn === opponentTop.seat} isFinished={finishedPlayers.has(opponentTop.id)} isManaged={(currentRoom.managedPlayerIds ?? []).includes(opponentTop.id)} isDisconnected={(currentRoom.disconnectedPlayerIds ?? []).includes(opponentTop.id)} />
-              <div style={styles.oppPlayRow}>
-                {passedSeats.has(oppositeSeat) && !currentRoom.currentRoundPlays?.[oppositeSeat] ? (
-                  <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '4px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>过</div>
-                ) : (
-                  <RoundPlayInline play={currentRoom.currentRoundPlays?.[oppositeSeat]} currentLevel={currentLevel} />
-                )}
-              </div>
+            <div style={{ ...styles.opponentWithPlay, ...(compact ? { height: 'auto', gap: '0' } : {}) }}>
+              <OpponentDisplay compact={compact} player={opponentTop} handCount={getHandCount(opponentTop.id)} isCurrentTurn={currentRoom.currentTurn === opponentTop.seat} isFinished={finishedPlayers.has(opponentTop.id)} isManaged={(currentRoom.managedPlayerIds ?? []).includes(opponentTop.id)} isDisconnected={(currentRoom.disconnectedPlayerIds ?? []).includes(opponentTop.id)} />
+              {compact ? (
+                <div style={styles.compactPlayRow}>
+                  <CompactPlay cards={currentRoom.currentRoundPlays?.[oppositeSeat]?.cards} passed={passedSeats.has(oppositeSeat) && !currentRoom.currentRoundPlays?.[oppositeSeat]} />
+                </div>
+              ) : (
+                <div style={styles.oppPlayRow}>
+                  {passedSeats.has(oppositeSeat) && !currentRoom.currentRoundPlays?.[oppositeSeat] ? (
+                    <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '4px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>过</div>
+                  ) : (
+                    <RoundPlayInline play={currentRoom.currentRoundPlays?.[oppositeSeat]} currentLevel={currentLevel} small />
+                  )}
+                </div>
+              )}
             </div>
           ) : <EmptySeat seat={oppositeSeat} />}
         </div>
 
         {/* Middle row: left, center, right */}
-        <div style={styles.middleRow}>
-          {/* Left opponent + their play */}
-          <div style={styles.sideArea}>
+        <div style={{ ...styles.middleRow, ...(compact ? { gap: '6px' } : {}) }}>
+          {/* Left opponent */}
+          <div style={{ ...styles.sideArea, ...(compact ? { minWidth: '80px', alignItems: 'flex-start' } : {}) }}>
             {opponentLeft ? (
-              <div style={styles.opponentWithPlay}>
-                <OpponentDisplay player={opponentLeft} handCount={getHandCount(opponentLeft.id)} isCurrentTurn={currentRoom.currentTurn === opponentLeft.seat} isFinished={finishedPlayers.has(opponentLeft.id)} isManaged={(currentRoom.managedPlayerIds ?? []).includes(opponentLeft.id)} isDisconnected={(currentRoom.disconnectedPlayerIds ?? []).includes(opponentLeft.id)} />
-                <div style={styles.oppPlayRow}>
-                  {passedSeats.has(leftSeat) && !currentRoom.currentRoundPlays?.[leftSeat] ? (
-                    <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '4px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>过</div>
-                  ) : (
-                    <RoundPlayInline play={currentRoom.currentRoundPlays?.[leftSeat]} currentLevel={currentLevel} />
-                  )}
-                </div>
+              <div style={{ ...styles.opponentWithPlay, ...(compact ? { height: 'auto', gap: '0' } : {}) }}>
+                <OpponentDisplay compact={compact} player={opponentLeft} handCount={getHandCount(opponentLeft.id)} isCurrentTurn={currentRoom.currentTurn === opponentLeft.seat} isFinished={finishedPlayers.has(opponentLeft.id)} isManaged={(currentRoom.managedPlayerIds ?? []).includes(opponentLeft.id)} isDisconnected={(currentRoom.disconnectedPlayerIds ?? []).includes(opponentLeft.id)} />
+                {compact ? (
+                  <div style={styles.compactPlayRow}>
+                    <CompactPlay cards={currentRoom.currentRoundPlays?.[leftSeat]?.cards} passed={passedSeats.has(leftSeat) && !currentRoom.currentRoundPlays?.[leftSeat]} />
+                  </div>
+                ) : (
+                  <div style={styles.oppPlayRow}>
+                    {passedSeats.has(leftSeat) && !currentRoom.currentRoundPlays?.[leftSeat] ? (
+                      <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '4px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>过</div>
+                    ) : (
+                      <RoundPlayInline play={currentRoom.currentRoundPlays?.[leftSeat]} currentLevel={currentLevel} small />
+                    )}
+                  </div>
+                )}
               </div>
             ) : <EmptySeat seat={leftSeat} />}
           </div>
 
-          {/* Center: turn indicator + toast */}
-          <div style={styles.centerArea}>
+          {/* Center: turn indicator + last play (compact: text summary) */}
+          <div style={{ ...styles.centerArea, ...(compact ? { height: 'auto', minHeight: '60px' } : {}) }}>
             {message && (
               <span style={{ background: 'rgba(0,0,0,0.75)', color: '#fff', padding: '5px 16px', borderRadius: '16px', fontSize: '0.88rem', border: '1px solid rgba(255,255,255,0.15)', marginBottom: '8px' }}>
                 {message}
               </span>
             )}
             {isMyTurn ? (
-              <div style={{ ...styles.turnIndicator, animation: 'pulse 0.8s ease-in-out infinite alternate', ...(turnCountdown !== null && turnCountdown <= 10 ? { color: '#ff6b6b', textShadow: '0 0 16px rgba(255,80,80,0.9)' } : {}) }}>
+              <div style={{ ...styles.turnIndicator, ...(compact ? { fontSize: '1.1rem', marginTop: '0' } : {}), animation: 'pulse 0.8s ease-in-out infinite alternate', ...(turnCountdown !== null && turnCountdown <= 10 ? { color: '#ff6b6b', textShadow: '0 0 16px rgba(255,80,80,0.9)' } : {}) }}>
                 ⚡ 轮到你了！{turnCountdown !== null && <span style={{ marginLeft: '8px' }}>({turnCountdown}s)</span>}
               </div>
             ) : (
@@ -349,35 +361,53 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                 {currentRoom.lastPlay ? '等待出牌...' : '新一轮'}
               </div>
             )}
+            {currentRoom.lastPlay && (
+              <div style={{ color: '#ffd700', fontSize: '0.72rem', marginTop: '4px', textAlign: 'center' }}>
+                {currentRoom.players.find(p => p.id === currentRoom.lastPlay!.playerId)?.name}：{handTypeLabel(currentRoom.lastPlay.hand.type)} ({currentRoom.lastPlay.cards.length}张)
+              </div>
+            )}
           </div>
 
-          {/* Right opponent + their play */}
-          <div style={styles.sideArea}>
+          {/* Right opponent */}
+          <div style={{ ...styles.sideArea, ...(compact ? { minWidth: '80px', alignItems: 'flex-start', justifyContent: 'flex-end' } : {}) }}>
             {opponentRight ? (
-              <div style={styles.opponentWithPlay}>
-                <OpponentDisplay player={opponentRight} handCount={getHandCount(opponentRight.id)} isCurrentTurn={currentRoom.currentTurn === opponentRight.seat} isFinished={finishedPlayers.has(opponentRight.id)} isManaged={(currentRoom.managedPlayerIds ?? []).includes(opponentRight.id)} isDisconnected={(currentRoom.disconnectedPlayerIds ?? []).includes(opponentRight.id)} />
-                <div style={styles.oppPlayRow}>
-                  {passedSeats.has(rightSeat) && !currentRoom.currentRoundPlays?.[rightSeat] ? (
-                    <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '4px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>过</div>
-                  ) : (
-                    <RoundPlayInline play={currentRoom.currentRoundPlays?.[rightSeat]} currentLevel={currentLevel} />
-                  )}
-                </div>
+              <div style={{ ...styles.opponentWithPlay, ...(compact ? { height: 'auto', gap: '0' } : {}) }}>
+                <OpponentDisplay compact={compact} player={opponentRight} handCount={getHandCount(opponentRight.id)} isCurrentTurn={currentRoom.currentTurn === opponentRight.seat} isFinished={finishedPlayers.has(opponentRight.id)} isManaged={(currentRoom.managedPlayerIds ?? []).includes(opponentRight.id)} isDisconnected={(currentRoom.disconnectedPlayerIds ?? []).includes(opponentRight.id)} />
+                {compact ? (
+                  <div style={styles.compactPlayRow}>
+                    <CompactPlay cards={currentRoom.currentRoundPlays?.[rightSeat]?.cards} passed={passedSeats.has(rightSeat) && !currentRoom.currentRoundPlays?.[rightSeat]} />
+                  </div>
+                ) : (
+                  <div style={styles.oppPlayRow}>
+                    {passedSeats.has(rightSeat) && !currentRoom.currentRoundPlays?.[rightSeat] ? (
+                      <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '4px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>过</div>
+                    ) : (
+                      <RoundPlayInline play={currentRoom.currentRoundPlays?.[rightSeat]} currentLevel={currentLevel} small />
+                    )}
+                  </div>
+                )}
               </div>
             ) : <EmptySeat seat={rightSeat} />}
           </div>
         </div>
 
-        {/* Bottom: my play this round + hand */}
-        <div style={styles.myArea}>
-          {/* My play this round — fixed height so layout doesn't shift */}
-          <div style={styles.myPlayRow}>
-            {currentRoom.currentRoundPlays?.[mySeat] ? (
-              <RoundPlayInline play={currentRoom.currentRoundPlays[mySeat]} currentLevel={currentLevel} label="我" />
-            ) : passedSeats.has(mySeat) ? (
-              <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '4px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>我：过</div>
-            ) : null}
-          </div>
+        {/* Bottom: my play + hand */}
+        <div style={{ ...styles.myArea, ...(compact ? { gap: '5px' } : {}) }}>
+          {/* My play this round — fixed height; cleared when it's my turn */}
+          {compact ? (
+            <div style={styles.compactPlayRow}>
+              {!isMyTurn && <CompactPlay cards={currentRoom.currentRoundPlays?.[mySeat]?.cards} passed={passedSeats.has(mySeat) && !currentRoom.currentRoundPlays?.[mySeat]} label="我" />}
+            </div>
+          ) : (
+            <div style={styles.myPlayRow}>
+              {!isMyTurn && (currentRoom.currentRoundPlays?.[mySeat] ? (
+                <RoundPlayInline play={currentRoom.currentRoundPlays[mySeat]} currentLevel={currentLevel} label="我" small />
+              ) : passedSeats.has(mySeat) ? (
+                <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '4px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>我：过</div>
+              ) : null)}
+            </div>
+          )}
+
           {/* My info */}
           <div style={styles.myInfo}>
             <span style={styles.myName}>{me?.name ?? '我'} ({SEAT_LABELS[mySeat]})</span>
@@ -386,20 +416,24 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
           </div>
 
           {/* Hand — fan layout */}
-          <div style={styles.handScroll}>
+          <div style={{ ...styles.handScroll, ...(compact ? { minHeight: '76px', padding: '0 8px' } : {}) }}>
             <div style={{
               position: 'relative',
-              height: '110px',
-              width: `${Math.max(64, (myHand.length - 1) * 28 + 64 + selectedIds.size * 30)}px`,
+              height: compact ? '76px' : '110px',
+              width: compact
+                ? `${Math.max(44, (myHand.length - 1) * 18 + 44 + selectedIds.size * 26)}px`
+                : `${Math.max(54, (myHand.length - 1) * 23 + 54 + selectedIds.size * 30)}px`,
             }}>
               {myHand.map((card, i) => {
-                const extraOffset = myHand.slice(0, i).filter(c => selectedIds.has(c.id)).length * 30;
+                const overlap = compact ? 18 : 23;
+                const selOffset = compact ? 26 : 30;
+                const extraOffset = myHand.slice(0, i).filter(c => selectedIds.has(c.id)).length * selOffset;
                 return (
                 <div
                   key={card.id}
                   style={{
                     position: 'absolute',
-                    left: `${i * 28 + extraOffset}px`,
+                    left: `${i * overlap + extraOffset}px`,
                     bottom: 0,
                     zIndex: selectedIds.has(card.id) ? 200 : i + 1,
                     transition: 'left 0.1s',
@@ -410,6 +444,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                     selected={selectedIds.has(card.id)}
                     onClick={() => toggleCard(card.id)}
                     isWildcard={isWildcard(card, currentLevel)}
+                    small={compact}
                   />
                 </div>
                 );
@@ -421,18 +456,18 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
           {(() => {
             const isManaged = (currentRoom.managedPlayerIds ?? []).includes(playerId);
             return (
-              <div style={styles.actions}>
+              <div style={{ ...styles.actions, ...(compact ? { gap: '6px' } : {}) }}>
                 {!isManaged && (
                   <>
                     <button
-                      style={{ ...styles.actionBtn, ...styles.clearBtn }}
+                      style={{ ...styles.actionBtn, ...styles.clearBtn, ...(compact ? { padding: '4px 12px', fontSize: '0.88rem' } : {}) }}
                       onClick={() => setSelectedIds(new Set())}
                       disabled={selectedIds.size === 0}
                     >
                       取消
                     </button>
                     {canPass && (
-                      <button style={{ ...styles.actionBtn, ...styles.passBtn }} onClick={handlePass}>
+                      <button style={{ ...styles.actionBtn, ...styles.passBtn, ...(compact ? { padding: '4px 12px', fontSize: '0.88rem' } : {}) }} onClick={handlePass}>
                         过
                       </button>
                     )}
@@ -440,6 +475,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                       style={{
                         ...styles.actionBtn,
                         ...styles.playBtn,
+                        ...(compact ? { padding: '4px 12px', fontSize: '0.88rem' } : {}),
                         ...(!isMyTurn || selectedIds.size === 0 ? styles.disabledBtn : {}),
                       }}
                       onClick={handlePlay}
@@ -448,7 +484,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                       出牌 {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
                     </button>
                     <button
-                      style={{ ...styles.actionBtn, ...styles.hintBtn, ...(!isMyTurn ? styles.disabledBtn : {}) }}
+                      style={{ ...styles.actionBtn, ...styles.hintBtn, ...(compact ? { padding: '6px 12px', fontSize: '0.88rem' } : {}), ...(!isMyTurn ? styles.disabledBtn : {}) }}
                       onClick={() => socket.emit(SOCKET_EVENTS.GET_HINT)}
                       disabled={!isMyTurn}
                     >
@@ -457,10 +493,10 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                   </>
                 )}
                 {isManaged && (
-                  <div style={styles.managedBanner}>托管中，系统自动出牌</div>
+                  <div style={{ ...styles.managedBanner, ...(compact ? { fontSize: '0.78rem', padding: '4px 10px' } : {}) }}>托管中，系统自动出牌</div>
                 )}
                 <button
-                  style={{ ...styles.actionBtn, ...(isManaged ? styles.managedActiveBtn : styles.managedBtn) }}
+                  style={{ ...styles.actionBtn, ...(isManaged ? styles.managedActiveBtn : styles.managedBtn), ...(compact ? { padding: '4px 12px', fontSize: '0.85rem' } : {}) }}
                   onClick={() => socket.emit(SOCKET_EVENTS.TOGGLE_MANAGE)}
                 >
                   {isManaged ? '取消托管' : '托管'}
@@ -474,14 +510,14 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
       {/* Hand type selection modal */}
       {handTypeChoices && (
         <div style={modalStyles.overlay}>
-          <div style={modalStyles.modal}>
-            <div style={modalStyles.title}>选择牌型</div>
-            <div style={modalStyles.subtitle}>这手牌有多种出法，请选择：</div>
-            <div style={modalStyles.choices}>
+          <div style={{ ...modalStyles.modal, ...(compact ? { padding: '14px 16px', gap: '10px', minWidth: '220px' } : {}) }}>
+            <div style={{ ...modalStyles.title, ...(compact ? { fontSize: '0.95rem' } : {}) }}>选择牌型</div>
+            {!compact && <div style={modalStyles.subtitle}>这手牌有多种出法，请选择：</div>}
+            <div style={{ ...modalStyles.choices, ...(compact ? { gap: '6px' } : {}) }}>
               {handTypeChoices.map((hr) => (
                 <button
                   key={hr.type}
-                  style={{ ...modalStyles.choiceBtn, ...(chosenType === hr.type ? { border: '2px solid #ffd700', background: 'rgba(255,215,0,0.15)' } : {}) }}
+                  style={{ ...modalStyles.choiceBtn, ...(compact ? { padding: '8px 10px', fontSize: '0.88rem' } : {}), ...(chosenType === hr.type ? { border: '2px solid #ffd700', background: 'rgba(255,215,0,0.15)' } : {}) }}
                   onClick={() => setChosenType(hr.type)}
                 >
                   {handTypeLabel(hr.type)}
@@ -490,13 +526,13 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
               ))}
             </div>
             <button
-              style={{ ...modalStyles.choiceBtn, background: chosenType ? 'linear-gradient(135deg, #ffd700, #ffb300)' : 'rgba(255,255,255,0.05)', color: chosenType ? '#1a1a1a' : '#666', justifyContent: 'center', opacity: chosenType ? 1 : 0.5 }}
+              style={{ ...modalStyles.choiceBtn, ...(compact ? { padding: '8px 10px', fontSize: '0.88rem' } : {}), background: chosenType ? 'linear-gradient(135deg, #ffd700, #ffb300)' : 'rgba(255,255,255,0.05)', color: chosenType ? '#1a1a1a' : '#666', justifyContent: 'center', opacity: chosenType ? 1 : 0.5 }}
               disabled={!chosenType}
               onClick={() => chosenType && handleChooseType(chosenType)}
             >
               确认出牌
             </button>
-            <button style={modalStyles.cancelBtn} onClick={cancelChooseType}>取消</button>
+            <button style={{ ...modalStyles.cancelBtn, ...(compact ? { padding: '6px', fontSize: '0.85rem' } : {}) }} onClick={cancelChooseType}>取消</button>
           </div>
         </div>
       )}
@@ -542,9 +578,9 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
 
         return (
         <div style={overlayStyles.overlay}>
-          <div style={overlayStyles.panel}>
-            <div style={overlayStyles.title}>{title}</div>
-            <div style={overlayStyles.levelAdvance}>{subtitle}</div>
+          <div style={{ ...overlayStyles.panel, ...(compact ? { padding: '14px 16px', gap: '8px', minWidth: '240px' } : {}) }}>
+            <div style={{ ...overlayStyles.title, ...(compact ? { fontSize: '1.1rem' } : {}) }}>{title}</div>
+            <div style={{ ...overlayStyles.levelAdvance, ...(compact ? { fontSize: '0.9rem' } : {}) }}>{subtitle}</div>
             <div style={overlayStyles.positions}>
               {gameResult.finishPositions.map((fp) => (
                 <div key={fp.playerId} style={overlayStyles.positionRow}>
@@ -555,7 +591,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
             </div>
             {gameResult.matchWon ? (
               <button
-                style={{ ...modalStyles.choiceBtn, marginTop: '8px', width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #ffd700, #ffb300)', color: '#1a1a1a' }}
+                style={{ ...modalStyles.choiceBtn, ...(compact ? { padding: '8px 10px', fontSize: '0.88rem' } : {}), marginTop: '8px', width: '100%', justifyContent: 'center', background: 'linear-gradient(135deg, #ffd700, #ffb300)', color: '#1a1a1a' }}
                 onClick={() => socket.emit(SOCKET_EVENTS.RESET_ROOM)}
               >
                 返回房间
@@ -563,12 +599,12 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
             ) : (
               <>
                 <button
-                  style={{ ...modalStyles.choiceBtn, marginTop: '8px', width: '100%', justifyContent: 'center', opacity: me?.isReady ? 0.5 : 1 }}
+                  style={{ ...modalStyles.choiceBtn, ...(compact ? { padding: '8px 10px', fontSize: '0.88rem' } : {}), marginTop: '8px', width: '100%', justifyContent: 'center', opacity: me?.isReady ? 0.5 : 1 }}
                   onClick={() => socket.emit(SOCKET_EVENTS.PLAYER_READY)}
                 >
                   {me?.isReady ? '已准备 ✓' : '准备下一盘'}
                 </button>
-                <div style={overlayStyles.hint}>
+                <div style={{ ...overlayStyles.hint, ...(compact ? { fontSize: '0.75rem' } : {}) }}>
                   {currentRoom.players.filter((p) => p.isReady).length} / 4 人已准备
                 </div>
               </>
@@ -581,21 +617,21 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
       {/* Tribute reveal overlay */}
       {tributeReveal && (
         <div style={overlayStyles.overlay}>
-          <div style={overlayStyles.panel}>
-            <div style={overlayStyles.title}>进贡 / 还贡</div>
+          <div style={{ ...overlayStyles.panel, ...(compact ? { padding: '12px 14px', gap: '8px' } : {}) }}>
+            <div style={{ ...overlayStyles.title, ...(compact ? { fontSize: '1.1rem' } : {}) }}>进贡 / 还贡</div>
             {tributeReveal.map((e, i) => (
-              <div key={i} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', padding: '10px 16px', marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div key={i} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', padding: compact ? '6px 10px' : '10px 16px', marginBottom: compact ? '4px' : '10px', display: 'flex', flexDirection: 'column', gap: compact ? '4px' : '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ color: '#aaa', fontSize: '0.85rem' }}>{e.fromName} → {e.toName}</span>
+                  <span style={{ color: '#aaa', fontSize: compact ? '0.78rem' : '0.85rem' }}>{e.fromName} → {e.toName}</span>
                 </div>
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: compact ? '12px' : '20px', alignItems: 'center' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ color: '#ff9800', fontSize: '0.75rem' }}>进贡</span>
-                    {e.tributeCard ? <CardComponent card={e.tributeCard} isWildcard={isWildcard(e.tributeCard, currentLevel)} /> : <span style={{ color: '#555' }}>—</span>}
+                    <span style={{ color: '#ff9800', fontSize: compact ? '0.7rem' : '0.75rem' }}>进贡</span>
+                    {e.tributeCard ? <CardComponent card={e.tributeCard} small={compact} isWildcard={isWildcard(e.tributeCard, currentLevel)} /> : <span style={{ color: '#555' }}>—</span>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ color: '#4fc3f7', fontSize: '0.75rem' }}>还贡</span>
-                    {e.returnCard ? <CardComponent card={e.returnCard} isWildcard={isWildcard(e.returnCard, currentLevel)} /> : <span style={{ color: '#555' }}>—</span>}
+                    <span style={{ color: '#4fc3f7', fontSize: compact ? '0.7rem' : '0.75rem' }}>还贡</span>
+                    {e.returnCard ? <CardComponent card={e.returnCard} small={compact} isWildcard={isWildcard(e.returnCard, currentLevel)} /> : <span style={{ color: '#555' }}>—</span>}
                   </div>
                 </div>
               </div>
@@ -612,25 +648,25 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
         const iAmTied = tiedIds.includes(playerId);
         return (
         <div style={overlayStyles.overlay}>
-          <div style={overlayStyles.panel}>
-            <div style={overlayStyles.title}>{isShowingTie ? '平局！' : isRerolling ? '平局！再投一次' : '掷骰子决定先手'}</div>
+          <div style={{ ...overlayStyles.panel, ...(compact ? { padding: '12px 14px', gap: '8px', minWidth: '260px' } : {}) }}>
+            <div style={{ ...overlayStyles.title, ...(compact ? { fontSize: '1.1rem' } : {}) }}>{isShowingTie ? '平局！' : isRerolling ? '平局！再投一次' : '掷骰子决定先手'}</div>
             {(isShowingTie || isRerolling) && (
-              <div style={{ color: '#ff9800', fontSize: '0.85rem', marginBottom: '4px' }}>
+              <div style={{ color: '#ff9800', fontSize: compact ? '0.75rem' : '0.85rem', marginBottom: '2px' }}>
                 {`${tiedIds.map((id: string) => currentRoom.players.find(p => p.id === id)?.name ?? id).join(' 和 ')} 平局${isShowingTie ? '，稍后重新掷骰' : '，需要重新掷骰'}`}
               </div>
             )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '5px' : '10px', width: '100%' }}>
               {(diceResult ? diceResult.rolls.slice().sort((a, b) => a.seat - b.seat) : currentRoom.players.slice().sort((a, b) => (a.seat ?? 0) - (b.seat ?? 0)).map(p => ({ playerId: p.id, seat: p.seat ?? 0, name: p.name, roll: currentRoom.diceRolls?.[p.id] }))).map((r) => {
                 const isWinner = diceResult && r.seat === diceResult.winningSeat;
                 const rPlayerId = 'playerId' in r ? r.playerId : '';
                 const isTiedPlayer = tiedIds.includes(rPlayerId);
                 const roll = 'roll' in r ? r.roll : currentRoom.diceRolls?.[rPlayerId];
                 return (
-                  <div key={r.seat} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', background: isWinner ? 'rgba(255,215,0,0.15)' : isTiedPlayer ? 'rgba(255,152,0,0.12)' : 'rgba(255,255,255,0.06)', borderRadius: '8px', border: isWinner ? '1px solid rgba(255,215,0,0.5)' : isTiedPlayer ? '1px solid rgba(255,152,0,0.6)' : '1px solid transparent' }}>
-                    <span style={{ color: isWinner ? '#ffd700' : isTiedPlayer ? '#ff9800' : '#eee', fontWeight: isWinner || isTiedPlayer ? 700 : 400 }}>
+                  <div key={r.seat} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: compact ? '4px 10px' : '8px 16px', background: isWinner ? 'rgba(255,215,0,0.15)' : isTiedPlayer ? 'rgba(255,152,0,0.12)' : 'rgba(255,255,255,0.06)', borderRadius: '8px', border: isWinner ? '1px solid rgba(255,215,0,0.5)' : isTiedPlayer ? '1px solid rgba(255,152,0,0.6)' : '1px solid transparent' }}>
+                    <span style={{ color: isWinner ? '#ffd700' : isTiedPlayer ? '#ff9800' : '#eee', fontWeight: isWinner || isTiedPlayer ? 700 : 400, fontSize: compact ? '0.82rem' : undefined }}>
                       {r.name} ({SEAT_LABELS[r.seat]}){isWinner ? ' 👑 先出！' : isTiedPlayer ? ' 🔁' : ''}
                     </span>
-                    <span style={{ color: roll !== undefined ? (isTiedPlayer ? '#ff9800' : '#ffd700') : '#555', fontWeight: 700, fontSize: '1.2rem' }}>
+                    <span style={{ color: roll !== undefined ? (isTiedPlayer ? '#ff9800' : '#ffd700') : '#555', fontWeight: 700, fontSize: compact ? '1rem' : '1.2rem' }}>
                       {roll !== undefined ? `🎲 ${roll}` : '？'}
                     </span>
                   </div>
@@ -664,13 +700,13 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
       {/* 抗贡 overlay */}
       {tributeState?.skipTribute && tributeState.bigJokerHolders && (
         <div style={overlayStyles.overlay}>
-          <div style={overlayStyles.panel}>
-            <div style={overlayStyles.title}>抗贡！</div>
-            <div style={{ color: '#ffd700', fontSize: '0.95rem', marginBottom: '12px' }}>免除进贡，即将开始新游戏...</div>
+          <div style={{ ...overlayStyles.panel, ...(compact ? { padding: '12px 14px', gap: '8px' } : {}) }}>
+            <div style={{ ...overlayStyles.title, ...(compact ? { fontSize: '1.1rem' } : {}) }}>抗贡！</div>
+            <div style={{ color: '#ffd700', fontSize: compact ? '0.78rem' : '0.95rem', marginBottom: compact ? '4px' : '12px' }}>免除进贡，即将开始新游戏...</div>
             {tributeState.bigJokerHolders.map((h) => (
-              <div key={h.playerId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.06)', borderRadius: '8px', padding: '8px 16px', marginBottom: '8px', width: '100%' }}>
-                <span style={{ color: '#eee' }}>{h.name}</span>
-                <span style={{ color: '#ffd700', fontWeight: 700, fontSize: '1.1rem' }}>
+              <div key={h.playerId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.06)', borderRadius: '8px', padding: compact ? '5px 10px' : '8px 16px', marginBottom: compact ? '4px' : '8px', width: '100%' }}>
+                <span style={{ color: '#eee', fontSize: compact ? '0.85rem' : undefined }}>{h.name}</span>
+                <span style={{ color: '#ffd700', fontWeight: 700, fontSize: compact ? '0.9rem' : '1.1rem' }}>
                   {Array(h.count).fill('大王').join(' + ')}
                 </span>
               </div>
@@ -685,9 +721,9 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
         if (isManaged) {
           return (
             <div style={overlayStyles.overlay}>
-              <div style={overlayStyles.panel}>
-                <div style={overlayStyles.title}>进贡/还贡</div>
-                <div style={{ color: '#81c784', fontSize: '0.95rem' }}>托管中，系统自动处理...</div>
+              <div style={{ ...overlayStyles.panel, ...(compact ? { padding: '12px 14px', gap: '8px' } : {}) }}>
+                <div style={{ ...overlayStyles.title, ...(compact ? { fontSize: '1.1rem' } : {}) }}>进贡/还贡</div>
+                <div style={{ color: '#81c784', fontSize: compact ? '0.78rem' : '0.95rem' }}>托管中，系统自动处理...</div>
               </div>
             </div>
           );
@@ -703,24 +739,33 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
           const receiver = currentRoom.players.find((p) => p.id === giveEntry.toPlayerId);
           return (
             <div style={overlayStyles.overlay}>
-              <div style={overlayStyles.panel}>
-                <div style={overlayStyles.title}>进贡</div>
-                <div style={overlayStyles.hint}>选一张牌进贡给 {receiver?.name}（必须是最大的牌）</div>
-                <div style={tributeStyles.handRow}>
-                  {myHand.map((c) => {
-                    const canTribute = options.some(o => o.id === c.id);
-                    return (
-                      <div key={c.id} style={{ opacity: canTribute ? 1 : 0.35 }}>
-                        <CardComponent card={c} selected={selectedIds.has(c.id)}
-                          onClick={() => canTribute ? setSelectedIds(new Set([c.id])) : undefined}
-                          isWildcard={isWildcard(c, currentLevel)} />
-                      </div>
-                    );
-                  })}
-                </div>
-                {options.length === 0 && <div style={{ color: '#81c784' }}>没有可进贡的牌（全是王或万能牌）</div>}
+              <div style={{ ...overlayStyles.panel, ...(compact ? { padding: '12px 14px', gap: '8px', minWidth: '260px' } : {}) }}>
+                <div style={{ ...overlayStyles.title, ...(compact ? { fontSize: '1.1rem' } : {}) }}>进贡</div>
+                <div style={{ ...overlayStyles.hint, fontSize: compact ? '0.75rem' : undefined }}>选一张牌进贡给 {receiver?.name}（必须是最大的牌）</div>
+                {compact ? (
+                  <TributeBadgeHand
+                    cards={myHand}
+                    selectedId={Array.from(selectedIds)[0]}
+                    isEligible={(c) => options.some(o => o.id === c.id)}
+                    onSelect={(id) => setSelectedIds(new Set([id]))}
+                  />
+                ) : (
+                  <div style={tributeStyles.handRow}>
+                    {myHand.map((c) => {
+                      const canTribute = options.some(o => o.id === c.id);
+                      return (
+                        <div key={c.id} style={{ opacity: canTribute ? 1 : 0.35, flexShrink: 0 }}>
+                          <CardComponent card={c} selected={selectedIds.has(c.id)}
+                            onClick={() => canTribute ? setSelectedIds(new Set([c.id])) : undefined}
+                            isWildcard={isWildcard(c, currentLevel)} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {options.length === 0 && <div style={{ color: '#81c784', fontSize: compact ? '0.8rem' : undefined }}>没有可进贡的牌（全是王或万能牌）</div>}
                 <button
-                  style={{ ...modalStyles.choiceBtn, marginTop: '12px', opacity: selectedIds.size === 0 && options.length > 0 ? 0.5 : 1 }}
+                  style={{ ...modalStyles.choiceBtn, marginTop: compact ? '6px' : '12px', opacity: selectedIds.size === 0 && options.length > 0 ? 0.5 : 1 }}
                   disabled={options.length > 0 && selectedIds.size === 0}
                   onClick={() => {
                     const cardId = Array.from(selectedIds)[0];
@@ -738,28 +783,37 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
           const giver = currentRoom.players.find((p) => p.id === returnEntry.fromPlayerId);
           return (
             <div style={overlayStyles.overlay}>
-              <div style={overlayStyles.panel}>
-                <div style={overlayStyles.title}>还贡</div>
-                <div style={overlayStyles.hint}>收到 {giver?.name} 进贡。选一张 10 或以下的牌还给对方</div>
+              <div style={{ ...overlayStyles.panel, ...(compact ? { padding: '12px 14px', gap: '8px', minWidth: '260px' } : {}) }}>
+                <div style={{ ...overlayStyles.title, ...(compact ? { fontSize: '1.1rem' } : {}) }}>还贡</div>
+                <div style={{ ...overlayStyles.hint, fontSize: compact ? '0.75rem' : undefined }}>收到 {giver?.name} 进贡。选一张 10 或以下的牌还给对方</div>
                 {returnEntry.tributeCard && (
                   <div style={tributeStyles.tributeCard}>
-                    收到的贡牌：<CardComponent card={returnEntry.tributeCard} isWildcard={isWildcard(returnEntry.tributeCard, currentLevel)} />
+                    收到的贡牌：<CardComponent card={returnEntry.tributeCard} small={compact} isWildcard={isWildcard(returnEntry.tributeCard, currentLevel)} />
                   </div>
                 )}
-                <div style={tributeStyles.handRow}>
-                  {myHand.map((c) => {
-                    const canReturn = getGameValue(c, currentLevel) <= 10;
-                    return (
-                      <div key={c.id} style={{ opacity: canReturn ? 1 : 0.35 }}>
-                        <CardComponent card={c} selected={selectedIds.has(c.id)}
-                          onClick={() => canReturn ? setSelectedIds(new Set([c.id])) : undefined}
-                          isWildcard={isWildcard(c, currentLevel)} />
-                      </div>
-                    );
-                  })}
-                </div>
+                {compact ? (
+                  <TributeBadgeHand
+                    cards={myHand}
+                    selectedId={Array.from(selectedIds)[0]}
+                    isEligible={(c) => getGameValue(c, currentLevel) <= 10}
+                    onSelect={(id) => setSelectedIds(new Set([id]))}
+                  />
+                ) : (
+                  <div style={tributeStyles.handRow}>
+                    {myHand.map((c) => {
+                      const canReturn = getGameValue(c, currentLevel) <= 10;
+                      return (
+                        <div key={c.id} style={{ opacity: canReturn ? 1 : 0.35, flexShrink: 0 }}>
+                          <CardComponent card={c} selected={selectedIds.has(c.id)}
+                            onClick={() => canReturn ? setSelectedIds(new Set([c.id])) : undefined}
+                            isWildcard={isWildcard(c, currentLevel)} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
                 <button
-                  style={{ ...modalStyles.choiceBtn, marginTop: '12px', opacity: selectedIds.size === 0 ? 0.5 : 1 }}
+                  style={{ ...modalStyles.choiceBtn, marginTop: compact ? '6px' : '12px', opacity: selectedIds.size === 0 ? 0.5 : 1 }}
                   disabled={selectedIds.size === 0}
                   onClick={() => {
                     const cardId = Array.from(selectedIds)[0];
@@ -777,13 +831,13 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
           if (myGrabEntry) {
             return (
               <div style={overlayStyles.overlay}>
-                <div style={overlayStyles.panel}>
-                  <div style={overlayStyles.title}>抢贡！</div>
-                  <div style={overlayStyles.hint}>选一张你想要的还贡牌（后抢到的人先出第一手牌）</div>
-                  <div style={tributeStyles.handRow}>
+                <div style={{ ...overlayStyles.panel, ...(compact ? { padding: '12px 14px', gap: '8px' } : {}) }}>
+                  <div style={{ ...overlayStyles.title, ...(compact ? { fontSize: '1.1rem' } : {}) }}>抢贡！</div>
+                  <div style={{ ...overlayStyles.hint, fontSize: compact ? '0.75rem' : undefined }}>选一张你想要的还贡牌（后抢到的人先出第一手牌）</div>
+                  <div style={{ ...tributeStyles.handRow, ...(compact ? { flexWrap: 'nowrap', overflowX: 'auto', maxHeight: '80px' } : {}) }}>
                     {tributeState.pendingReturns.map((pr) => (
-                      <div key={pr.card.id}>
-                        <CardComponent card={pr.card} selected={selectedIds.has(pr.card.id)}
+                      <div key={pr.card.id} style={{ flexShrink: 0 }}>
+                        <CardComponent card={pr.card} small={compact} selected={selectedIds.has(pr.card.id)}
                           onClick={() => setSelectedIds(new Set([pr.card.id]))}
                           isWildcard={isWildcard(pr.card, currentLevel)} />
                         <div style={{ color: '#aaa', fontSize: '0.7rem', textAlign: 'center', marginTop: '2px' }}>
@@ -793,7 +847,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                     ))}
                   </div>
                   <button
-                    style={{ ...modalStyles.choiceBtn, marginTop: '12px', opacity: selectedIds.size === 0 ? 0.5 : 1 }}
+                    style={{ ...modalStyles.choiceBtn, marginTop: compact ? '6px' : '12px', opacity: selectedIds.size === 0 ? 0.5 : 1 }}
                     disabled={selectedIds.size === 0}
                     onClick={() => {
                       const cardId = Array.from(selectedIds)[0];
@@ -807,12 +861,12 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
           // Watching grab phase
           return (
             <div style={overlayStyles.overlay}>
-              <div style={overlayStyles.panel}>
-                <div style={overlayStyles.title}>抢贡中...</div>
-                <div style={overlayStyles.hint}>等待双方抢牌，后抢到牌的人先出</div>
-                <div style={tributeStyles.handRow}>
+              <div style={{ ...overlayStyles.panel, ...(compact ? { padding: '12px 14px', gap: '8px' } : {}) }}>
+                <div style={{ ...overlayStyles.title, ...(compact ? { fontSize: '1.1rem' } : {}) }}>抢贡中...</div>
+                <div style={{ ...overlayStyles.hint, fontSize: compact ? '0.75rem' : undefined }}>等待双方抢牌，后抢到牌的人先出</div>
+                <div style={{ ...tributeStyles.handRow, ...(compact ? { flexWrap: 'nowrap', overflowX: 'auto', maxHeight: '80px' } : {}) }}>
                   {tributeState.pendingReturns.map((pr) => (
-                    <CardComponent key={pr.card.id} card={pr.card} isWildcard={isWildcard(pr.card, currentLevel)} />
+                    <CardComponent key={pr.card.id} card={pr.card} small={compact} isWildcard={isWildcard(pr.card, currentLevel)} />
                   ))}
                 </div>
               </div>
@@ -825,8 +879,8 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
         if (!allDone) {
           return (
             <div style={overlayStyles.overlay}>
-              <div style={overlayStyles.panel}>
-                <div style={overlayStyles.title}>进贡中...</div>
+              <div style={{ ...overlayStyles.panel, ...(compact ? { padding: '12px 14px', gap: '8px' } : {}) }}>
+                <div style={{ ...overlayStyles.title, ...(compact ? { fontSize: '1.1rem' } : {}) }}>进贡中...</div>
                 {tributeState.entries.map((e, i) => {
                   const giver = currentRoom.players.find((p) => p.id === e.fromPlayerId);
                   const recv = currentRoom.players.find((p) => p.id === e.toPlayerId);
@@ -845,6 +899,73 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
         }
         return null;
       })()}
+    </div>
+  );
+};
+
+const TributeBadgeHand: React.FC<{
+  cards: Card[];
+  selectedId?: string;
+  isEligible?: (card: Card) => boolean;
+  onSelect?: (cardId: string) => void;
+}> = ({ cards, selectedId, isEligible, onSelect }) => (
+  <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '10px' }}>
+    {cards.map((c) => {
+      const eligible = isEligible ? isEligible(c) : true;
+      const selected = c.id === selectedId;
+      const isRed = c.suit === Suit.HEART || c.suit === Suit.DIAMOND || (c.suit === Suit.JOKER && c.rank === 15);
+      return (
+        <span
+          key={c.id}
+          onClick={() => eligible && onSelect?.(c.id)}
+          style={{
+            background: selected ? 'rgba(255,215,0,0.92)' : 'rgba(255,255,255,0.92)',
+            color: selected ? '#1a1a1a' : isRed ? '#c0392b' : '#1a1a1a',
+            fontSize: '1.0rem',
+            padding: '4px 9px',
+            borderRadius: '5px',
+            fontWeight: 700,
+            lineHeight: 1.3,
+            cursor: eligible && onSelect ? 'pointer' : 'default',
+            opacity: eligible ? 1 : 0.28,
+            border: selected ? '2px solid #ffd700' : '2px solid transparent',
+            boxShadow: selected ? '0 2px 8px rgba(255,215,0,0.5)' : 'none',
+            userSelect: 'none',
+          }}
+        >
+          {getCardLabel(c)}
+        </span>
+      );
+    })}
+  </div>
+);
+
+function getCardLabel(card: Card): string {
+  const rankLabels: Record<number, string> = { 1: 'A', 11: 'J', 12: 'Q', 13: 'K', 14: '小', 15: '大' };
+  const suitSymbols: Record<Suit, string> = { [Suit.SPADE]: '♠', [Suit.HEART]: '♥', [Suit.CLUB]: '♣', [Suit.DIAMOND]: '♦', [Suit.JOKER]: '' };
+  return (rankLabels[card.rank] ?? String(card.rank)) + suitSymbols[card.suit];
+}
+
+const CompactPlay: React.FC<{ cards?: Card[]; passed?: boolean; label?: string }> = ({ cards, passed, label }) => {
+  if (passed) return (
+    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+      {label && <span style={{ color: '#888', fontSize: '0.72rem' }}>{label}</span>}
+      <span style={{ color: '#888', fontSize: '0.72rem' }}>过</span>
+    </div>
+  );
+  if (!cards || cards.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexWrap: 'wrap' }}>
+      {label && <span style={{ color: '#888', fontSize: '0.72rem', marginRight: '2px' }}>{label}</span>}
+      {cards.slice(0, 6).map((c, i) => {
+        const isRed = c.suit === Suit.HEART || c.suit === Suit.DIAMOND || (c.suit === Suit.JOKER && c.rank === 15);
+        return (
+          <span key={i} style={{ background: 'rgba(255,255,255,0.88)', color: isRed ? '#c0392b' : '#1a1a1a', fontSize: '0.82rem', padding: '1px 4px', borderRadius: '2px', fontWeight: 700, lineHeight: '18px' }}>
+            {getCardLabel(c)}
+          </span>
+        );
+      })}
+      {cards.length > 6 && <span style={{ color: '#aaa', fontSize: '0.78rem' }}>+{cards.length - 6}</span>}
     </div>
   );
 };
@@ -873,14 +994,15 @@ const RoundPlayInline: React.FC<{
   play?: { cards: Card[]; hand: HandResult };
   currentLevel: number;
   label?: string;
-}> = ({ play, currentLevel, label }) => {
+  small?: boolean;
+}> = ({ play, currentLevel, label, small = false }) => {
   if (!play) return null;
   return (
     <div style={roundPlayStyles.container}>
       {label && <span style={roundPlayStyles.label}>{label}</span>}
       <div style={roundPlayStyles.cards}>
         {[...play.cards].sort((a, b) => getGameValue(a, currentLevel) - getGameValue(b, currentLevel)).map((c) => (
-          <CardComponent key={c.id} card={c} small isWildcard={isWildcard(c, currentLevel)} />
+          <CardComponent key={c.id} card={c} small={small} isWildcard={isWildcard(c, currentLevel)} />
         ))}
       </div>
     </div>
@@ -900,19 +1022,23 @@ const OpponentDisplay: React.FC<{
   isFinished: boolean;
   isManaged: boolean;
   isDisconnected: boolean;
-  vertical?: boolean;
-}> = ({ player, handCount, isCurrentTurn, isFinished, isManaged, isDisconnected }) => (
-  <div style={{ ...oppStyles.container, ...(isCurrentTurn ? oppStyles.active : {}), ...(isDisconnected ? oppStyles.disconnected : {}) }}>
-    <div style={oppStyles.name}>{player.name} ({SEAT_LABELS[player.seat ?? 0]})</div>
-    <div style={oppStyles.team}>队伍{player.teamId === 0 ? 'A' : 'B'}</div>
+  compact?: boolean;
+}> = ({ player, handCount, isCurrentTurn, isFinished, isManaged, isDisconnected, compact }) => (
+  <div style={{ ...oppStyles.container, ...(compact ? { padding: '5px 10px', minWidth: '100px' } : {}), ...(isCurrentTurn ? oppStyles.active : {}), ...(isDisconnected ? oppStyles.disconnected : {}) }}>
+    <div style={{ ...oppStyles.name, ...(compact ? { fontSize: '0.75rem', marginBottom: '2px' } : {}) }}>
+      {player.name} ({SEAT_LABELS[player.seat ?? 0]})
+      {compact && !isFinished && <span style={{ color: '#4fc3f7', fontWeight: 700, marginLeft: '5px' }}>牌数：{handCount <= 10 ? handCount : '?'}</span>}
+    </div>
     {isFinished ? (
-      <div style={oppStyles.finished}>已出完 🎉</div>
+      <div style={{ ...oppStyles.finished, ...(compact ? { fontSize: '0.72rem' } : {}) }}>已出完 🎉</div>
     ) : (
-      <div style={oppStyles.cardCount}>{handCount <= 10 ? `牌数：${handCount}` : '牌数：？'}</div>
+      !compact && <div style={oppStyles.cardCount}>{handCount <= 10 ? `牌数：${handCount}` : '牌数：？'}</div>
     )}
-    {isCurrentTurn && !isDisconnected && <div style={oppStyles.turnBadge}>出牌中</div>}
-    {isDisconnected && <div style={oppStyles.disconnectedBadge}>断线中</div>}
-    {isManaged && !isDisconnected && <div style={oppStyles.managedBadge}>托管</div>}
+    <div style={{ height: '20px', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+      {isCurrentTurn && !isDisconnected && <span style={oppStyles.turnBadge}>出牌中</span>}
+      {isDisconnected && <span style={oppStyles.disconnectedBadge}>断线中</span>}
+      {isManaged && !isDisconnected && <span style={oppStyles.managedBadge}>托管</span>}
+    </div>
   </div>
 );
 
@@ -924,18 +1050,17 @@ const oppStyles: Record<string, React.CSSProperties> = {
   container: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', textAlign: 'center', minWidth: '90px' },
   active: { border: '2px solid #ffd700', background: 'rgba(255,215,0,0.1)' },
   name: { color: '#eee', fontWeight: 600, fontSize: '0.9rem', marginBottom: '4px' },
-  team: { color: '#aaa', fontSize: '0.75rem', marginBottom: '6px' },
   cardCount: { color: '#4fc3f7', fontSize: '1.1rem', fontWeight: 700 },
   finished: { color: '#81c784', fontSize: '0.85rem', fontWeight: 600 },
-  turnBadge: { marginTop: '6px', background: '#ffd700', color: '#1a1a1a', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px' },
-  managedBadge: { marginTop: '4px', background: 'rgba(100,180,255,0.2)', color: '#90caf9', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, padding: '1px 5px', border: '1px solid rgba(100,180,255,0.35)' },
+  turnBadge: { background: '#ffd700', color: '#1a1a1a', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px' },
+  managedBadge: { background: 'rgba(100,180,255,0.2)', color: '#90caf9', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, padding: '1px 5px', border: '1px solid rgba(100,180,255,0.35)' },
   disconnected: { opacity: 0.6, border: '1px solid rgba(255,100,100,0.4)' },
-  disconnectedBadge: { marginTop: '4px', background: 'rgba(255,80,80,0.2)', color: '#ef9a9a', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, padding: '1px 5px', border: '1px solid rgba(255,80,80,0.4)' },
+  disconnectedBadge: { background: 'rgba(255,80,80,0.2)', color: '#ef9a9a', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, padding: '1px 5px', border: '1px solid rgba(255,80,80,0.4)' },
   empty: { color: '#555', fontSize: '0.85rem', padding: '20px' },
 };
 
 const styles: Record<string, React.CSSProperties> = {
-  container: { minHeight: '100vh', background: 'linear-gradient(135deg, #0f2027, #203a43, #2c5364)', display: 'flex', flexDirection: 'column' },
+  container: { height: '100dvh', minHeight: '-webkit-fill-available', background: 'linear-gradient(135deg, #0f2027, #203a43, #2c5364)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.1)', gap: '8px' },
   headerInfo: { color: '#ffd700', fontSize: '0.85rem', fontWeight: 600, flexShrink: 0 },
   headerLevels: { display: 'flex', gap: '12px', flex: 1, justifyContent: 'center' },
@@ -944,8 +1069,8 @@ const styles: Record<string, React.CSSProperties> = {
   teamLevelPlaying: { border: '1px solid rgba(255,215,0,0.2)' },
   leaveBtn: { background: 'transparent', border: '1px solid #555', color: '#aaa', borderRadius: '6px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem' },
   table: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', gap: '8px' },
-  topArea: { display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', gap: '0', height: '172px' },
-  opponentWithPlay: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0', height: '172px' },
+  topArea: { display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', gap: '0', height: '180px' },
+  opponentWithPlay: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0', height: '180px' },
   middleRow: { display: 'flex', alignItems: 'center', gap: '12px', width: '100%', maxWidth: '800px', flex: 1 },
   sideArea: { display: 'flex', alignItems: 'center', minWidth: '100px' },
   centerArea: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '160px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' },
@@ -954,8 +1079,9 @@ const styles: Record<string, React.CSSProperties> = {
   roundPlayName: { color: '#aaa', fontSize: '0.75rem', minWidth: '40px', textAlign: 'right', flexShrink: 0 },
   roundPlayCards: { display: 'flex', gap: '3px', flexWrap: 'wrap' },
   noLastPlay: { color: '#666', fontSize: '0.95rem' },
-  oppPlayRow: { height: '76px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  myPlayRow: { height: '76px', display: 'flex', alignItems: 'center' },
+  oppPlayRow: { height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  compactPlayRow: { height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  myPlayRow: { height: '80px', display: 'flex', alignItems: 'center' },
   turnIndicator: { marginTop: '8px', color: '#ffd700', fontWeight: 700, fontSize: '1.5rem', textShadow: '0 0 12px rgba(255,215,0,0.8)', letterSpacing: '0.02em' },
   myArea: { width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '8px' },
   myInfo: { display: 'flex', alignItems: 'center', gap: '12px' },
@@ -988,7 +1114,7 @@ const modalStyles: Record<string, React.CSSProperties> = {
 
 const overlayStyles: Record<string, React.CSSProperties> = {
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 },
-  panel: { background: '#1a2a3a', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '20px', padding: '32px', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', textAlign: 'center' },
+  panel: { background: '#1a2a3a', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '20px', padding: '24px', minWidth: '280px', maxWidth: '95vw', maxHeight: '88vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', textAlign: 'center' },
   title: { color: '#ffd700', fontSize: '1.4rem', fontWeight: 800 },
   levelAdvance: { color: '#81c784', fontSize: '1.1rem', fontWeight: 700 },
   positions: { display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' },

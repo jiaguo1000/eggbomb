@@ -84,29 +84,30 @@ const CardComponent: React.FC<CardProps> = ({ card, selected, onClick, faceDown,
           </div>
         ) : (
           <>
-            <div style={styles.rankText(small)}>{rank}</div>
+            <div style={{ ...styles.rankText(small), ...(rank === '10' ? { transform: 'scaleX(0.82)', transformOrigin: 'left', marginLeft: '-2px' } : {}) }}>{rank}</div>
             <div style={styles.suitText(small)}>{suitSymbol}</div>
           </>
         )}
       </div>
-      {/* Center */}
-      {!small && (
-        isJoker ? (
-          <JokerCenter isBig={isBigJoker} />
-        ) : (
-          <div style={styles.center}>
-            <span style={{ fontSize: '1.5rem' }}>{suitSymbol}</span>
-          </div>
-        )
+      {/* Bottom-right suit symbol */}
+      {!isJoker && !small && (
+        <div style={styles.bottomRight}>
+          <span style={{ fontSize: '2.2rem', lineHeight: 1 }}>{suitSymbol}</span>
+        </div>
       )}
-      {small && isJoker && <JokerCenter isBig={isBigJoker} small />}
+      {!isJoker && small && (
+        <div style={styles.bottomRight}>
+          <span style={{ fontSize: '1.35rem', lineHeight: 1 }}>{suitSymbol}</span>
+        </div>
+      )}
+      {isJoker && <JokerCenter isBig={isBigJoker} small={small} />}
     </div>
   );
 };
 
 const styles = {
   card: (small?: boolean): React.CSSProperties => ({
-    width: small ? '44px' : '64px',
+    width: small ? '44px' : '54px',
     height: small ? '64px' : '90px',
     borderRadius: small ? '5px' : '6px',
     background: '#fff',
@@ -162,23 +163,22 @@ const styles = {
   corner: (_small?: boolean): React.CSSProperties => ({
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     lineHeight: 1.1,
   }),
   rankText: (small?: boolean): React.CSSProperties => ({
-    fontSize: small ? '0.88rem' : '1.4rem',
+    fontSize: small ? '0.88rem' : '1.25rem',
     fontWeight: 700,
     lineHeight: 1,
   }),
   suitText: (small?: boolean): React.CSSProperties => ({
-    fontSize: small ? '0.82rem' : '1.3rem',
+    fontSize: small ? '0.82rem' : '1.25rem',
     lineHeight: 1,
   }),
-  center: {
+  bottomRight: {
     position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
+    bottom: '4px',
+    right: '4px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
