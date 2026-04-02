@@ -13,7 +13,8 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ playerName, onPlayerNameChange })
   const [stats, setStats] = useState<{ roomCount: number; playerCount: number; maxRooms: number } | null>(null);
 
   useEffect(() => {
-    fetch('/stats')
+    const base = import.meta.env.VITE_SERVER_URL ?? '';
+    fetch(`${base}/stats`)
       .then((r) => r.json())
       .then(setStats)
       .catch(() => {});

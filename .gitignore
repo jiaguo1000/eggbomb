@@ -26,5 +26,6 @@ Thumbs.db
 # Personal notes and AI assistant memory
 notes.txt
 project.txt
+deployment.md
 .claude/
 memory/
