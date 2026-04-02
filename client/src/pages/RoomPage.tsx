@@ -85,7 +85,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
     <div style={styles.container}>
       {/* Header */}
       <div style={{ ...styles.header, ...(compact ? { padding: '0.4rem 0.75rem', gap: '0.4rem' } : {}) }}>
-        <button style={styles.leaveBtn} onClick={onLeave}>
+        <button style={{ ...styles.leaveBtn, ...(compact ? { fontSize: '0.75rem', padding: '0.3rem 0.7rem' } : {}) }} onClick={onLeave}>
           ← 离开
         </button>
         <div style={styles.headerCenter}>
@@ -97,8 +97,8 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
         <div style={styles.roomCode}>
           <span style={styles.roomCodeLabel}>房间号</span>
           <button style={styles.roomCodeBtn} onClick={handleCopyCode} title="点击复制">
-            <span style={styles.roomCodeText}>{room.code}</span>
-            <span style={styles.copyHint}>{copied ? '已复制!' : '复制'}</span>
+            <span style={{ ...styles.roomCodeText, ...(compact ? { fontSize: '0.85rem' } : {}) }}>{room.code}</span>
+            <span style={{ ...styles.copyHint, ...(compact ? { fontSize: '0.62rem' } : {}) }}>{copied ? '已复制!' : '复制'}</span>
           </button>
         </div>
       </div>
@@ -140,14 +140,14 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
                 <div style={styles.teamRow}>
                   <span style={{ ...styles.teamDot, background: '#4fc3f7' }} />
                   <span style={styles.teamText}>
-                    队伍一 (南北)
+                    南北
                     <span style={styles.levelBadge}>Lv.{LEVEL_LABELS[room.currentLevel[0]] ?? room.currentLevel[0]}</span>
                   </span>
                 </div>
                 <div style={styles.teamRow}>
                   <span style={{ ...styles.teamDot, background: '#ef9a9a' }} />
                   <span style={styles.teamText}>
-                    队伍二 (东西)
+                    东西
                     <span style={styles.levelBadge}>Lv.{LEVEL_LABELS[room.currentLevel[1]] ?? room.currentLevel[1]}</span>
                   </span>
                 </div>
@@ -215,7 +215,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
       {/* Action bar */}
       <div style={{ ...styles.actionBar, ...(compact ? { padding: '0.4rem 1rem' } : {}) }}>
         {!hasSeat ? (
-          <p style={styles.actionHint}>点击空座位入座</p>
+          <p style={{ ...styles.actionHint, ...(compact ? { fontSize: '0.75rem' } : {}) }}>点击空座位入座</p>
         ) : (
           <button
             style={{
