@@ -58,6 +58,9 @@ const App: React.FC = () => {
     });
 
     socket.on(SOCKET_EVENTS.REJOIN_SUCCESS, ({ room, hand, playerId }: { room: Room; hand: Card[]; playerId: string }) => {
+      const cur = stateRef.current;
+      // If user has already explicitly joined/created a different room, ignore stale rejoin
+      if (cur.playerId !== null && cur.playerId !== playerId) return;
       setState((prev) => ({
         ...prev,
         room,
@@ -130,6 +133,7 @@ const App: React.FC = () => {
 
   const goToLobby = () => {
     socket.emit(SOCKET_EVENTS.LEAVE_ROOM);
+    localStorage.removeItem(SESSION_KEY);
     setState(initialState);
   };
 

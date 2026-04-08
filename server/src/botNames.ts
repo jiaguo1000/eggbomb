@@ -18,13 +18,13 @@ export const BOT_NAMES = [
  */
 export function pickBotName(usedNames: string[]): string {
   const available = BOT_NAMES.filter(
-    (n) => !usedNames.includes(`机器人：${n}`)
+    (n) => !usedNames.includes(`机：${n}`)
   );
   if (available.length === 0) {
     // Fallback: just use a number suffix
     let i = 1;
-    while (usedNames.includes(`机器人${i}`)) i++;
-    return `机器人${i}`;
+    while (usedNames.includes(`机${i}`)) i++;
+    return `机${i}`;
   }
-  return `机器人：${available[Math.floor(Math.random() * available.length)]}`;
+  return `机：${available[Math.floor(Math.random() * available.length)]}`;
 }

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 
-// Compact mode: landscape phone (height < 500px)
+// Compact mode: the shorter screen dimension < 500px (works in both landscape and CSS-rotated portrait)
+const isCompact = () => Math.min(window.innerWidth, window.innerHeight) < 500;
+
 export function useCompact(): boolean {
-  const [compact, setCompact] = useState(window.innerHeight < 500);
+  const [compact, setCompact] = useState(isCompact);
   useEffect(() => {
-    const handler = () => setCompact(window.innerHeight < 500);
+    const handler = () => setCompact(isCompact());
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   }, []);

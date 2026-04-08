@@ -5,7 +5,7 @@
     <link rel="icon" type="image/x-icon" href="/favicon_io/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon_io/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon_io/favicon-16x16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon_io/icon-light-192.png" />
     <link rel="manifest" href="/favicon_io/site.webmanifest" />
     <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-LRCJFSFZRS"></script>
@@ -15,7 +15,10 @@
       gtag('js', new Date());
       gtag('config', 'G-LRCJFSFZRS');
     </script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="EggBomb" />
     <title>掼蛋 — Guan Dan</title>
     <style>
       * {
@@ -40,25 +43,189 @@
         #rotate-overlay { display: flex !important; }
       }
 
-      body {
+      #pwa-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: #0f2027;
+        z-index: 100000;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        text-align: center;
+        gap: 20px;
+        padding: 32px 24px;
+      }
+      #pwa-overlay .pwa-icon { font-size: 4rem; }
+      #pwa-overlay .pwa-title { font-size: 1.4rem; font-weight: 700; color: #ffd700; }
+      #pwa-overlay .pwa-subtitle { font-size: 0.95rem; color: #aaa; line-height: 1.5; }
+      #pwa-overlay .pwa-steps { display: flex; flex-direction: column; gap: 12px; max-width: 320px; }
+      #pwa-overlay .pwa-step {
+        display: flex; align-items: center; gap: 12px;
+        background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 12px; padding: 12px 16px; text-align: left;
+      }
+      #pwa-overlay .pwa-step-num {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: rgba(255,215,0,0.2); border: 1px solid rgba(255,215,0,0.4);
+        color: #ffd700; font-weight: 700; font-size: 0.9rem;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      }
+      #pwa-overlay .pwa-step-text { font-size: 0.88rem; color: #ddd; line-height: 1.4; }
+      #pwa-overlay .pwa-step-text b { color: #fff; }
+
+      html, body {
         font-family: 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
         background-color: #0f2027;
         color: #e0e0e0;
-        min-height: 100vh;
+        height: 100%;
       }
 
       #root {
-        min-height: 100vh;
+        height: 100%;
       }
+
+      /* Applied only in standalone mode via JS */
+      body.standalone-mode {
+        overflow: hidden;
+        overscroll-behavior: none;
+        touch-action: pan-x pan-y;
+      }
+      html.standalone-mode {
+        overflow: hidden;
+      }
+
     </style>
   </head>
   <body>
+    <!-- PWA install prompt (shown on mobile browsers, hidden in standalone mode) -->
+    <div id="pwa-overlay">
+      <div class="pwa-icon">💣</div>
+      <div class="pwa-title" id="pwa-title">请先安装掼蛋</div>
+      <div class="pwa-subtitle" id="pwa-subtitle">为了最佳体验，请将游戏添加到主屏幕后再打开</div>
+
+      <!-- iOS Safari: normal add-to-homescreen steps -->
+      <div class="pwa-steps" id="pwa-steps-ios-safari" style="display:none">
+        <div class="pwa-step">
+          <div class="pwa-step-num">1</div>
+          <div class="pwa-step-text">点击底部的 <b>分享</b> 按钮 <b>⬆</b></div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">2</div>
+          <div class="pwa-step-text">选择 <b>添加到主屏幕</b></div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">3</div>
+          <div class="pwa-step-text">点击右上角 <b>添加</b>，然后从主屏幕图标打开游戏</div>
+        </div>
+      </div>
+
+      <!-- iOS non-Safari (Chrome/Firefox etc): must switch to Safari first -->
+      <div class="pwa-steps" id="pwa-steps-ios-other" style="display:none">
+        <div class="pwa-step">
+          <div class="pwa-step-num">1</div>
+          <div class="pwa-step-text">点击浏览器菜单，选择 <b>在 Safari 中打开</b></div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">2</div>
+          <div class="pwa-step-text">在 Safari 底部点击 <b>分享</b> 按钮 <b>⬆</b></div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">3</div>
+          <div class="pwa-step-text">选择 <b>添加到主屏幕</b>，然后从图标打开游戏</div>
+        </div>
+      </div>
+
+      <!-- Android Chrome -->
+      <div class="pwa-steps" id="pwa-steps-android" style="display:none">
+        <div class="pwa-step">
+          <div class="pwa-step-num">1</div>
+          <div class="pwa-step-text">点击右上角的 <b>菜单</b> 按钮 <b>⋮</b></div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">2</div>
+          <div class="pwa-step-text">选择 <b>添加到主屏幕</b> 或 <b>安装应用</b></div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">3</div>
+          <div class="pwa-step-text">点击 <b>安装</b>，然后从主屏幕图标打开游戏</div>
+        </div>
+      </div>
+
+      <!-- Other / unknown -->
+      <div class="pwa-steps" id="pwa-steps-other" style="display:none">
+        <div class="pwa-step">
+          <div class="pwa-step-num">1</div>
+          <div class="pwa-step-text">请在浏览器菜单中选择 <b>添加到主屏幕</b></div>
+        </div>
+        <div class="pwa-step">
+          <div class="pwa-step-num">2</div>
+          <div class="pwa-step-text">从主屏幕的掼蛋图标打开游戏</div>
+        </div>
+      </div>
+    </div>
+
     <div id="rotate-overlay">
       <div style="font-size:3rem">📱</div>
       <div style="font-size:1.2rem;font-weight:700">请旋转设备横屏</div>
       <div style="font-size:0.85rem;color:#888">Please rotate your device</div>
     </div>
     <div id="root"></div>
+
+    <script>
+      (function () {
+        var ua = navigator.userAgent;
+        var isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
+
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                        || window.navigator.standalone === true;
+
+        if (isStandalone) {
+          // ── Standalone mode ──────────────────────────────────────────────
+          // 1. Apply scroll/zoom restrictions
+          document.documentElement.classList.add('standalone-mode');
+          document.body.classList.add('standalone-mode');
+          var vp = document.querySelector('meta[name="viewport"]');
+          if (vp) vp.content = vp.content + ', maximum-scale=1.0, user-scalable=no';
+
+          // 2. Try OS-level orientation lock (works on some devices/versions).
+          //    If it fails, the CSS rotate overlay serves as fallback.
+          if (screen.orientation && typeof screen.orientation.lock === 'function') {
+            screen.orientation.lock('landscape').catch(function () {});
+          }
+          return;
+        }
+
+        // ── Browser mode ────────────────────────────────────────────────────
+        if (!isMobile) return; // Desktop: nothing to do
+
+        // Show PWA install prompt, suppress rotate overlay
+        document.getElementById('pwa-overlay').style.display = 'flex';
+        var style = document.createElement('style');
+        style.textContent = '#rotate-overlay { display: none !important; }';
+        document.head.appendChild(style);
+
+        // Show device-specific steps
+        var isIOS       = /iPhone|iPad|iPod/i.test(ua);
+        var isAndroid   = /Android/i.test(ua);
+        // Non-Safari iOS: Chrome, Firefox, Opera, Edge, WeChat, Weibo, TikTok, Facebook, Instagram, Twitter...
+        var isIOSSafari = isIOS && !/CriOS|FxiOS|OPiOS|EdgiOS|MicroMessenger|Weibo|BytedanceWebview|musical_ly|FBAN|FBAV|Instagram|Twitter/i.test(ua);
+
+        if (isIOSSafari) {
+          document.getElementById('pwa-steps-ios-safari').style.display = 'flex';
+        } else if (isIOS) {
+          document.getElementById('pwa-title').textContent = '请用 Safari 打开';
+          document.getElementById('pwa-subtitle').textContent = '只有 Safari 支持将游戏添加到主屏幕';
+          document.getElementById('pwa-steps-ios-other').style.display = 'flex';
+        } else if (isAndroid) {
+          document.getElementById('pwa-steps-android').style.display = 'flex';
+        } else {
+          document.getElementById('pwa-steps-other').style.display = 'flex';
+        }
+      })();
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

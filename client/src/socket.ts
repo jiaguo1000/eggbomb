@@ -7,6 +7,8 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL ?? '';
 const socket: Socket = io(SERVER_URL, {
   autoConnect: false,
   transports: ['websocket', 'polling'],
+  reconnectionDelay: 500,
+  reconnectionDelayMax: 2000,
 });
 
 export default socket;

@@ -270,7 +270,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
       <style>{`@keyframes pulse { from { opacity: 1; transform: scale(1); } to { opacity: 0.7; transform: scale(1.06); } }`}</style>
       {/* Header bar */}
       <div style={{ ...styles.header, ...(compact ? { padding: '2px 8px' } : {}) }}>
-        <span style={{ ...styles.headerInfo, ...(compact ? { fontSize: '0.7rem' } : {}) }}>房间：{currentRoom.code}</span>
+        <span style={{ ...styles.headerInfo, ...(compact ? { fontSize: '0.8rem' } : {}) }}>房间：{currentRoom.code}</span>
         <div style={{ ...styles.headerLevels, ...(compact ? { gap: '6px' } : {}) }}>
           {[0, 1].map((team) => {
             const lvl = currentRoom.currentLevel[team as 0 | 1];
@@ -281,7 +281,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
             const isPlayingAce = lvl === 14 && failures > 0;
             const isPlaying = playingTeam === team;
             return (
-              <span key={team} style={{ ...styles.teamLevel, ...(isMine ? styles.teamLevelMine : {}), ...(isPlaying && !isMine ? styles.teamLevelPlaying : {}), ...(compact ? { fontSize: '0.7rem', padding: '1px 5px' } : {}) }}>
+              <span key={team} style={{ ...styles.teamLevel, ...(isMine ? styles.teamLevelMine : {}), ...(isPlaying && !isMine ? styles.teamLevelPlaying : {}), ...(compact ? { fontSize: '0.78rem', padding: '2px 6px' } : {}) }}>
                 {teamName}: {lvlLabel}
                 {isPlaying && <span style={{ color: '#ffd700', marginLeft: '5px', fontSize: '0.7rem', fontWeight: 700, background: 'rgba(255,215,0,0.15)', borderRadius: '3px', padding: '0 4px' }}>本盘</span>}
                 {isPlayingAce && (
@@ -293,7 +293,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
             );
           })}
         </div>
-        <button style={{ ...styles.leaveBtn, ...(compact ? { fontSize: '0.72rem', padding: '2px 8px' } : {}) }} onClick={onLeave}>离开</button>
+        <button style={{ ...styles.leaveBtn, ...(compact ? { fontSize: '0.82rem', padding: '8px 14px', minHeight: '36px' } : {}) }} onClick={onLeave}>离开</button>
       </div>
 
       {/* Game table */}
@@ -311,7 +311,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
               ) : (
                 <div style={styles.oppPlayRow}>
                   {passedSeats.has(oppositeSeat) && !currentRoom.currentRoundPlays?.[oppositeSeat] ? (
-                    <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '4px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>过</div>
+                    <div style={{ color: '#ffb74d', fontSize: '1.1rem', fontWeight: 700, padding: '4px 10px', background: 'rgba(255,150,0,0.15)', borderRadius: '8px', border: '1px solid rgba(255,150,0,0.35)', letterSpacing: '0.05em' }}>过</div>
                   ) : (
                     <RoundPlayInline play={currentRoom.currentRoundPlays?.[oppositeSeat]} currentLevel={currentLevel} small />
                   )}
@@ -335,7 +335,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                 ) : (
                   <div style={styles.oppPlayRow}>
                     {passedSeats.has(leftSeat) && !currentRoom.currentRoundPlays?.[leftSeat] ? (
-                      <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '4px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>过</div>
+                      <div style={{ color: '#ffb74d', fontSize: '1.1rem', fontWeight: 700, padding: '4px 10px', background: 'rgba(255,150,0,0.15)', borderRadius: '8px', border: '1px solid rgba(255,150,0,0.35)', letterSpacing: '0.05em' }}>过</div>
                     ) : (
                       <RoundPlayInline play={currentRoom.currentRoundPlays?.[leftSeat]} currentLevel={currentLevel} small />
                     )}
@@ -366,7 +366,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
               </div>
             )}
             {currentRoom.lastPlay && (
-              <div style={{ color: '#ffd700', fontSize: '0.72rem', marginTop: '4px', textAlign: 'center' }}>
+              <div style={{ color: '#ffd700', fontSize: compact ? '0.82rem' : '0.72rem', marginTop: '4px', textAlign: 'center' }}>
                 {currentRoom.players.find(p => p.id === currentRoom.lastPlay!.playerId)?.name}：{handTypeLabel(currentRoom.lastPlay.hand.type)} ({currentRoom.lastPlay.cards.length}张)
               </div>
             )}
@@ -384,7 +384,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                 ) : (
                   <div style={styles.oppPlayRow}>
                     {passedSeats.has(rightSeat) && !currentRoom.currentRoundPlays?.[rightSeat] ? (
-                      <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '4px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>过</div>
+                      <div style={{ color: '#ffb74d', fontSize: '1.1rem', fontWeight: 700, padding: '4px 10px', background: 'rgba(255,150,0,0.15)', borderRadius: '8px', border: '1px solid rgba(255,150,0,0.35)', letterSpacing: '0.05em' }}>过</div>
                     ) : (
                       <RoundPlayInline play={currentRoom.currentRoundPlays?.[rightSeat]} currentLevel={currentLevel} small />
                     )}
@@ -407,7 +407,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
               {!isMyTurn && (currentRoom.currentRoundPlays?.[mySeat] ? (
                 <RoundPlayInline play={currentRoom.currentRoundPlays[mySeat]} currentLevel={currentLevel} label="我" small />
               ) : passedSeats.has(mySeat) ? (
-                <div style={{ color: '#aaa', fontSize: '0.9rem', padding: '4px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>我：过</div>
+                <div style={{ color: '#ffb74d', fontSize: '1.1rem', fontWeight: 700, padding: '4px 10px', background: 'rgba(255,150,0,0.15)', borderRadius: '8px', border: '1px solid rgba(255,150,0,0.35)', letterSpacing: '0.05em' }}>我：过</div>
               ) : null)}
             </div>
           )}
@@ -420,58 +420,63 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
           </div>
 
           {/* Hand — fan layout */}
-          <div style={{ ...styles.handScroll, ...(compact ? { minHeight: '76px', padding: '0 8px' } : {}) }}>
-            <div style={{
-              position: 'relative',
-              height: compact ? '76px' : '110px',
-              width: compact
-                ? `${Math.max(44, (myHand.length - 1) * 18 + 44 + selectedIds.size * 26)}px`
-                : `${Math.max(54, (myHand.length - 1) * 23 + 54 + selectedIds.size * 30)}px`,
-            }}>
-              {myHand.map((card, i) => {
-                const overlap = compact ? 18 : 23;
-                const selOffset = compact ? 26 : 30;
-                const extraOffset = myHand.slice(0, i).filter(c => selectedIds.has(c.id)).length * selOffset;
-                return (
-                <div
-                  key={card.id}
-                  style={{
-                    position: 'absolute',
-                    left: `${i * overlap + extraOffset}px`,
-                    bottom: 0,
-                    zIndex: selectedIds.has(card.id) ? 200 : i + 1,
-                    transition: 'left 0.1s',
-                  }}
-                >
-                  <CardComponent
-                    card={card}
-                    selected={selectedIds.has(card.id)}
-                    onClick={() => toggleCard(card.id)}
-                    isWildcard={isWildcard(card, currentLevel)}
-                    small={compact}
-                  />
+          <div style={{ ...styles.handScroll, ...(compact ? { minHeight: '72px', padding: '0 8px' } : {}) }}>
+            {(() => {
+              const overlap = compact ? 22 : 26;
+              const selOffset = compact ? 14 : 18;
+              const cardW = compact ? 44 : 54;
+              const totalWidth = Math.max(cardW, (myHand.length - 1) * overlap + cardW + selectedIds.size * selOffset);
+              return (
+                <div style={{
+                  position: 'relative',
+                  height: compact ? '72px' : '110px',
+                  width: `${totalWidth}px`,
+                  margin: '0 auto',
+                }}>
+                  {myHand.map((card, i) => {
+                    const extraOffset = myHand.slice(0, i).filter(c => selectedIds.has(c.id)).length * selOffset;
+                    return (
+                      <div
+                        key={card.id}
+                        style={{
+                          position: 'absolute',
+                          left: `${i * overlap + extraOffset}px`,
+                          bottom: 0,
+                          zIndex: selectedIds.has(card.id) ? 200 : i + 1,
+                          transition: 'left 0.1s',
+                        }}
+                      >
+                        <CardComponent
+                          card={card}
+                          selected={selectedIds.has(card.id)}
+                          onClick={() => toggleCard(card.id)}
+                          isWildcard={isWildcard(card, currentLevel)}
+                          small={compact}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-                );
-              })}
-            </div>
+              );
+            })()}
           </div>
 
           {/* Action buttons */}
           {(() => {
             const isManaged = (currentRoom.managedPlayerIds ?? []).includes(playerId);
             return (
-              <div style={{ ...styles.actions, ...(compact ? { gap: '6px', minHeight: '24px' } : { minHeight: '40px' }) }}>
+              <div style={{ ...styles.actions, ...(compact ? { gap: '8px', minHeight: '36px' } : { minHeight: '40px' }) }}>
                 {!isManaged && (
                   <>
                     <button
-                      style={{ ...styles.actionBtn, ...styles.clearBtn, ...(compact ? { padding: '2px 10px', fontSize: '0.88rem' } : {}) }}
+                      style={{ ...styles.actionBtn, ...styles.clearBtn, ...(compact ? { padding: '8px 14px', fontSize: '0.95rem' } : {}) }}
                       onClick={() => setSelectedIds(new Set())}
                       disabled={selectedIds.size === 0}
                     >
                       取消
                     </button>
                     {canPass && (
-                      <button style={{ ...styles.actionBtn, ...styles.passBtn, ...(compact ? { padding: '2px 10px', fontSize: '0.88rem' } : {}) }} onClick={handlePass}>
+                      <button style={{ ...styles.actionBtn, ...styles.passBtn, ...(compact ? { padding: '8px 14px', fontSize: '0.95rem' } : {}) }} onClick={handlePass}>
                         过
                       </button>
                     )}
@@ -479,7 +484,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                       style={{
                         ...styles.actionBtn,
                         ...styles.playBtn,
-                        ...(compact ? { padding: '2px 10px', fontSize: '0.88rem' } : {}),
+                        ...(compact ? { padding: '8px 14px', fontSize: '0.95rem' } : {}),
                         ...(!isMyTurn || selectedIds.size === 0 ? styles.disabledBtn : {}),
                       }}
                       onClick={handlePlay}
@@ -488,7 +493,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                       出牌 {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
                     </button>
                     <button
-                      style={{ ...styles.actionBtn, ...styles.hintBtn, ...(compact ? { padding: '2px 10px', fontSize: '0.88rem' } : {}), ...(!isMyTurn ? styles.disabledBtn : {}) }}
+                      style={{ ...styles.actionBtn, ...styles.hintBtn, ...(compact ? { padding: '8px 14px', fontSize: '0.95rem' } : {}), ...(!isMyTurn ? styles.disabledBtn : {}) }}
                       onClick={() => socket.emit(SOCKET_EVENTS.GET_HINT)}
                       disabled={!isMyTurn}
                     >
@@ -500,7 +505,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                   <div style={{ ...styles.managedBanner, ...(compact ? { fontSize: '0.78rem', padding: '2px 8px' } : {}) }}>托管中，系统自动出牌</div>
                 )}
                 <button
-                  style={{ ...styles.actionBtn, ...(isManaged ? styles.managedActiveBtn : styles.managedBtn), ...(compact ? { padding: '2px 10px', fontSize: '0.85rem' } : {}) }}
+                  style={{ ...styles.actionBtn, ...(isManaged ? styles.managedActiveBtn : styles.managedBtn), ...(compact ? { padding: '8px 14px', fontSize: '0.9rem' } : {}) }}
                   onClick={() => socket.emit(SOCKET_EVENTS.TOGGLE_MANAGE)}
                 >
                   {isManaged ? '取消托管' : '托管'}
@@ -954,7 +959,7 @@ const CompactPlay: React.FC<{ cards?: Card[]; passed?: boolean; label?: string }
   if (passed) return (
     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
       {label && <span style={{ color: '#888', fontSize: '0.72rem' }}>{label}</span>}
-      <span style={{ color: '#888', fontSize: '0.72rem' }}>过</span>
+      <span style={{ color: '#ffb74d', fontSize: '1.1rem', fontWeight: 700 }}>过</span>
     </div>
   );
   if (!cards || cards.length === 0) return null;
@@ -964,7 +969,7 @@ const CompactPlay: React.FC<{ cards?: Card[]; passed?: boolean; label?: string }
       {cards.slice(0, 6).map((c, i) => {
         const isRed = c.suit === Suit.HEART || c.suit === Suit.DIAMOND || (c.suit === Suit.JOKER && c.rank === 15);
         return (
-          <span key={i} style={{ background: 'rgba(255,255,255,0.88)', color: isRed ? '#c0392b' : '#1a1a1a', fontSize: '0.82rem', padding: '1px 4px', borderRadius: '2px', fontWeight: 700, lineHeight: '18px' }}>
+          <span key={i} style={{ background: 'rgba(255,255,255,0.88)', color: isRed ? '#c0392b' : '#1a1a1a', fontSize: '0.92rem', padding: '1px 5px', borderRadius: '2px', fontWeight: 700, lineHeight: '20px' }}>
             {getCardLabel(c)}
           </span>
         );
@@ -1029,7 +1034,7 @@ const OpponentDisplay: React.FC<{
   compact?: boolean;
 }> = ({ player, handCount, isCurrentTurn, isFinished, isManaged, isDisconnected, compact }) => (
   <div style={{ ...oppStyles.container, ...(compact ? { padding: '5px 10px', minWidth: '100px' } : {}), ...(isCurrentTurn ? oppStyles.active : {}), ...(isDisconnected ? oppStyles.disconnected : {}) }}>
-    <div style={{ ...oppStyles.name, ...(compact ? { fontSize: '0.75rem', marginBottom: '2px' } : {}) }}>
+    <div style={{ ...oppStyles.name, ...(compact ? { fontSize: '0.85rem', marginBottom: '2px' } : {}) }}>
       {player.name} ({SEAT_LABELS[player.seat ?? 0]})
       {player.isBot && (
         <span style={player.botDifficulty === 'medium' ? oppStyles.diffBadgeMedium : oppStyles.diffBadgeEasy}>
@@ -1072,7 +1077,7 @@ const oppStyles: Record<string, React.CSSProperties> = {
 };
 
 const styles: Record<string, React.CSSProperties> = {
-  container: { height: '100dvh', minHeight: '-webkit-fill-available', background: 'linear-gradient(135deg, #0f2027, #203a43, #2c5364)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+  container: { height: '100%', background: 'linear-gradient(135deg, #0f2027, #203a43, #2c5364)', display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' },
   header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.1)', gap: '8px' },
   headerInfo: { color: '#ffd700', fontSize: '0.85rem', fontWeight: 600, flexShrink: 0 },
   headerLevels: { display: 'flex', gap: '12px', flex: 1, justifyContent: 'center' },
@@ -1100,8 +1105,8 @@ const styles: Record<string, React.CSSProperties> = {
   myName: { color: '#ffd700', fontWeight: 600, fontSize: '0.9rem' },
   myCardCount: { color: '#aaa', fontSize: '0.85rem' },
   finishedBadge: { background: '#81c784', color: '#1a1a1a', borderRadius: '4px', padding: '2px 8px', fontSize: '0.8rem', fontWeight: 700 },
-  handScroll: { overflowX: 'auto', padding: '8px 8px 16px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', minHeight: '118px', display: 'flex', justifyContent: 'center' },
-  actions: { display: 'flex', gap: '10px', justifyContent: 'center' },
+  handScroll: { overflowX: 'auto', padding: '8px 8px 16px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', minHeight: '118px' },
+  actions: { display: 'flex', gap: '10px', justifyContent: 'center', paddingBottom: 'env(safe-area-inset-bottom)' },
   actionBtn: { padding: '10px 28px', borderRadius: '8px', fontSize: '1rem', fontWeight: 700, cursor: 'pointer', border: 'none', transition: 'opacity 0.2s' },
   clearBtn: { background: 'rgba(255,255,255,0.1)', color: '#ccc' },
   passBtn: { background: 'rgba(100,100,255,0.3)', color: '#aad4ff' },

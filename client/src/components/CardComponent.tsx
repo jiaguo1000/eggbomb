@@ -65,7 +65,7 @@ const CardComponent: React.FC<CardProps> = ({ card, selected, onClick, faceDown,
       style={{
         ...styles.card(small),
         ...(isRed ? styles.red : styles.black),
-        ...(selected ? styles.selected : {}),
+        ...(selected ? styles.selected(small) : {}),
         ...(isWildcard ? styles.wildcard : {}),
         ...(isJoker ? (isBigJoker ? styles.bigJokerCard : styles.smallJokerCard) : {}),
         cursor: onClick ? 'pointer' : 'default',
@@ -128,11 +128,11 @@ const styles = {
   } as React.CSSProperties,
   red: { color: '#c0392b' } as React.CSSProperties,
   black: { color: '#1a1a1a' } as React.CSSProperties,
-  selected: {
-    transform: 'translateY(-12px)',
+  selected: (small?: boolean): React.CSSProperties => ({
+    transform: small ? 'translateY(-8px)' : 'translateY(-12px)',
     boxShadow: '0 4px 12px rgba(255,215,0,0.6)',
     border: '2px solid #ffd700',
-  } as React.CSSProperties,
+  }),
   wildcard: {
     background: 'linear-gradient(135deg, #fff9e6, #fffde7)',
     border: '2px solid #ff9800',

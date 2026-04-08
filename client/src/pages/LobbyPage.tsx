@@ -66,7 +66,7 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ playerName, onPlayerNameChange })
               placeholder="输入昵称..."
               value={playerName}
               onChange={(e) => onPlayerNameChange(e.target.value)}
-              maxLength={16}
+              maxLength={10}
               onKeyDown={(e) => e.key === 'Enter' && activeTab === 'create' && handleCreateRoom()}
             />
           </div>
@@ -141,8 +141,7 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ playerName, onPlayerNameChange })
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    minHeight: '100dvh',
-    maxHeight: '100dvh',
+    height: '100%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

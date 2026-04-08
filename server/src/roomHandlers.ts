@@ -188,7 +188,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     socket.join(roomCode);
     registerSocket(socket.id, roomCode, playerId);
 
-    console.log(`[Room] Created room ${roomCode} by "${playerName}" (socket: ${socket.id})`);
+    console.log(`[${roomCode}] [Room] Created room ${roomCode} by "${playerName}" (socket: ${socket.id})`);
     socket.emit('room_created', { roomCode, playerId });
     broadcastRoomUpdate(io, room);
   });
@@ -227,7 +227,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     socket.join(room.code);
     registerSocket(socket.id, room.code, playerId);
 
-    console.log(`[Room] "${playerName}" joined room ${room.code} (socket: ${socket.id})`);
+    console.log(`[${room.code}] [Room] "${playerName}" joined room ${room.code} (socket: ${socket.id})`);
     socket.emit('room_joined', { roomCode: room.code, playerId });
     broadcastRoomUpdate(io, room);
   });
@@ -256,7 +256,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     player.isReady = false; // reset ready on seat change
     updateRoom(room);
 
-    console.log(`[Room] "${player.name}" chose seat ${seat} in room ${room.code}`);
+    console.log(`[${room.code}] [Room] "${player.name}" chose seat ${seat} in room ${room.code}`);
     broadcastRoomUpdate(io, room);
   });
 
@@ -273,7 +273,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     player.isReady = !player.isReady;
     updateRoom(room);
 
-    console.log(`[Room] "${player.name}" ready=${player.isReady} in room ${room.code}`);
+    console.log(`[${room.code}] [Room] "${player.name}" ready=${player.isReady} in room ${room.code}`);
     broadcastRoomUpdate(io, room);
 
     if (isRoomReady(room)) {
@@ -313,7 +313,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     room.players.push(botPlayer);
     updateRoom(room);
     broadcastRoomUpdate(io, room);
-    console.log(`[Room] Room ${room.code} — 添加机器人 ${botPlayer.name} (座位 ${seat}, 难度: ${difficulty})`);
+    console.log(`[${room.code}] [Room] 添加机器人 ${botPlayer.name} (座位 ${seat}, 难度: ${difficulty})`);
 
     if (isRoomReady(room)) {
       startGame(io, room);
@@ -336,7 +336,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     room.players = room.players.filter((p) => p.id !== bot.id);
     updateRoom(room);
     broadcastRoomUpdate(io, room);
-    console.log(`[Room] Room ${room.code} — 移除机器人 ${bot.name} (座位 ${seat})`);
+    console.log(`[${room.code}] [Room] 移除机器人 ${bot.name} (座位 ${seat})`);
   });
 
   // ── toggle_manage ─────────────────────────────────────────────────────────
@@ -414,7 +414,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     updateRoom(room);
     socket.emit(SOCKET_EVENTS.REJOIN_SUCCESS, { room, hand, playerId });
     broadcastRoomUpdate(io, room);
-    console.log(`[Room] "${player.name}" rejoined room ${room.code}`);
+    console.log(`[${room.code}] [Room] "${player.name}" rejoined room ${room.code}`);
   });
 
   // ── get_hint ──────────────────────────────────────────────────────────────
@@ -973,7 +973,7 @@ function scheduleBotTurn(io: Server, room: Room): void {
         const ismctsResult = await runISMCTS(ctx, isLead ? BOT_THINK_LEAD_MS : BOT_THINK_FOLLOW_MS);
         // Ensure minimum think time even for forced (1-candidate) results
         const ismctsElapsed = Date.now() - ismctsStart;
-        const minThinkMs = 1200; // combined with 800ms initial delay → 2s total minimum
+        const minThinkMs = 2200; // combined with 800ms initial delay → 3s total minimum
         if (ismctsElapsed < minThinkMs) {
           await new Promise(r => setTimeout(r, minThinkMs - ismctsElapsed));
         }
@@ -1278,7 +1278,7 @@ function startGame(io: Server, room: Room): void {
   room.currentTurn = (sorted[0]?.seat ?? 0) as PlayerSeat;
   updateRoom(room);
   broadcastRoomUpdate(io, room);
-  console.log(`[Game] Game started in room ${room.code}`);
+  console.log(`[${room.code}] [Game] started`);
 }
 
 function getNextActiveSeat(room: Room, currentSeat: PlayerSeat): PlayerSeat {
@@ -1370,7 +1370,7 @@ function endGame(io: Server, room: Room): void {
 
   io.to(room.code).emit(SOCKET_EVENTS.GAME_ENDED, { gameResult });
   broadcastRoomUpdate(io, room);
-  console.log(`[Game] Game ended in room ${room.code}, team ${winningTeam} wins +${levelAdvance}`);
+  console.log(`[${room.code}] [Game] ended — team ${winningTeam} wins +${levelAdvance}`);
   // Next game starts when all 4 players click ready again
 }
 
@@ -1439,7 +1439,7 @@ function startNewGameAfterTribute(io: Server, room: Room): void {
   broadcastRoomUpdate(io, room);
   scheduleBotTurn(io, room);
 
-  console.log(`[Game] New game started in room ${room.code}`);
+  console.log(`[${room.code}] [Game] new game started`);
 }
 
 function startTribute(io: Server, room: Room): void {
@@ -1593,11 +1593,11 @@ function scheduleRoomCleanup(io: Server, room: Room): void {
       .every((p) => (r.disconnectedPlayerIds ?? []).includes(p.id));
     if (stillAllGone) {
       deleteRoom(r.code);
-      console.log(`[Room] Room ${r.code} deleted — all humans disconnected for 30 minutes`);
+      console.log(`[${r.code}] [Room] deleted — all humans disconnected for 15 minutes`);
     }
-  }, 30 * 60 * 1000);
+  }, 15 * 60 * 1000);
   roomCleanupTimers.set(room.code, timer);
-  console.log(`[Room] Room ${room.code} — all humans disconnected, will delete in 30 minutes`);
+  console.log(`[${room.code}] [Room] all humans disconnected, will delete in 15 minutes`);
 }
 
 function handleLeave(io: Server, socket: Socket): void {
@@ -1619,7 +1619,7 @@ function handleLeave(io: Server, socket: Socket): void {
     return;
   }
 
-  console.log(`[Room] "${player.name}" left/disconnected from room ${room.code}`);
+  console.log(`[${room.code}] [Room] "${player.name}" left/disconnected`);
 
   if (room.phase === GamePhase.WAITING) {
     // In lobby: remove immediately
@@ -1654,7 +1654,7 @@ function handleLeave(io: Server, socket: Socket): void {
     scheduleBotDiceRoll(io, r);
     scheduleBotTurn(io, r);
     scheduleBotTribute(io, r);
-    console.log(`[Room] "${player.name}" entered 托管 after disconnect timeout`);
+    console.log(`[${roomCode}] [Room] "${player.name}" entered 托管 after disconnect timeout`);
   }, 30000);
   disconnectTimers.set(key, timer);
 }
