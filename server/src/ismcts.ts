@@ -429,12 +429,18 @@ function findSmallestNaturalTriplePairIds(hand: Card[], currentLevel: number): s
   for (const [, tripleCards] of triples) {
     const triple = tripleCards.slice(0, 3);
     const tripleIdSet = new Set(triple.map(c => c.id));
+    // Prefer pairs with count=2 after removing triple (doesn't break another triple)
     const pairEntry = [...byVal.entries()]
-      .filter(([, cards]) => cards.filter(c => !tripleIdSet.has(c.id)).length >= 2)
-      .sort((a, b) => a[0] - b[0])[0];
+      .map(([v, cards]) => ({ v, available: cards.filter(c => !tripleIdSet.has(c.id)) }))
+      .filter(({ available }) => available.length >= 2)
+      .sort((a, b) => {
+        const aBreaks = a.available.length >= 3 ? 1 : 0;
+        const bBreaks = b.available.length >= 3 ? 1 : 0;
+        if (aBreaks !== bBreaks) return aBreaks - bBreaks;
+        return a.v - b.v;
+      })[0];
     if (pairEntry) {
-      const pairCards = pairEntry[1].filter(c => !tripleIdSet.has(c.id)).slice(0, 2);
-      return [...triple, ...pairCards].map(c => c.id);
+      return [...triple, ...pairEntry.available.slice(0, 2)].map(c => c.id);
     }
   }
   return null;

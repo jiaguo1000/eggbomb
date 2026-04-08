@@ -124,8 +124,16 @@ function findTriplePairBeating(hand: Card[], required: HandResult, currentLevel:
     const tripleGroup = [...tc.slice(0, Math.min(tc.length, 3)), ...wildcards.slice(0, wcForT)];
     const wcLeft = wildcards.slice(wcForT);
 
-    for (const pv of sortedVals) {
-      if (pv === tv) continue;
+    // Prefer pair values with count<3 (don't break a triple); fall back to count>=3
+    const pairCandidates = sortedVals
+      .filter(pv => pv !== tv)
+      .sort((a, b) => {
+        const aBreaks = (byValue.get(a)!.length >= 3) ? 1 : 0;
+        const bBreaks = (byValue.get(b)!.length >= 3) ? 1 : 0;
+        if (aBreaks !== bBreaks) return aBreaks - bBreaks;
+        return a - b;
+      });
+    for (const pv of pairCandidates) {
       const pc = byValue.get(pv)!;
       const wcForP = Math.max(0, 2 - pc.length);
       if (wcForP > wcLeft.length) continue;
@@ -365,7 +373,15 @@ function findNaturalLowTriplePair(pureNormals: Card[], currentLevel: number): Ca
       if (!pairByVal.has(v)) pairByVal.set(v, []);
       pairByVal.get(v)!.push(c);
     }
-    const pairEntry = [...pairByVal.entries()].filter(([, cards]) => cards.length >= 2).sort((a, b) => a[0] - b[0])[0];
+    // Prefer pairs with count=2 (doesn't break a triple); fall back to count=3+ if needed
+    const pairEntry = [...pairByVal.entries()]
+      .filter(([, cards]) => cards.length >= 2)
+      .sort((a, b) => {
+        const aBreaks = a[1].length >= 3 ? 1 : 0;
+        const bBreaks = b[1].length >= 3 ? 1 : 0;
+        if (aBreaks !== bBreaks) return aBreaks - bBreaks;
+        return a[0] - b[0];
+      })[0];
     if (pairEntry) return [...triple, ...pairEntry[1].slice(0, 2)];
   }
   return null;
@@ -441,10 +457,11 @@ function isTeammatesBigPlay(lastPlay: LastPlay, teammateId: string | undefined, 
  *   [Normal path — opponent >2 cards]
  *   3. Two-turn finish: low combo (pair/triple/single) leaving rest as one valid play
  *   4. Natural low combo (straight/连对/三带二) — clear 5+ cards at once
- *   5. Smallest low pair (non-wildcard, < J)
- *   6. Smallest low single (non-wildcard, < J)
- *   7. Orphan-first among big cards (avoid breaking pairs/straights)
- *   8. Last resort: wildcard / joker
+ *   5. Smallest low junk single (true orphan: no pair partner, not in clean straight/连对)
+ *   6. Smallest low pair (non-wildcard, < J)
+ *   7. Smallest low single (non-wildcard, < J)
+ *   8. Orphan-first among big cards (avoid breaking pairs/straights)
+ *   9. Last resort: wildcard / joker
  */
 function chooseLead(hand: Card[], currentLevel: number, minOpponentCount = 27): string[] {
   const sorted = [...hand].sort((a, b) => getGameValue(a, currentLevel) - getGameValue(b, currentLevel));
@@ -539,17 +556,38 @@ function chooseLead(hand: Card[], currentLevel: number, minOpponentCount = 27): 
     return naturalCombos[0].map(c => c.id);
   }
 
-  // 5. Smallest low pair
+  // 5. Smallest low junk single (true orphan: no pair partner, not in a clean straight,
+  //    not part of a valid 连对 sequence) — clear dead cards before spending pairs
+  {
+    const lowValCounts = new Map<number, number>();
+    for (const c of lowPureNormals) {
+      const v = getGameValue(c, currentLevel);
+      lowValCounts.set(v, (lowValCounts.get(v) ?? 0) + 1);
+    }
+    const lowNormalValues = new Set(lowPureNormals.map(c => getGameValue(c, currentLevel)));
+    const lowPairRanks = new Set<number>(
+      [...lowValCounts.entries()].filter(([, cnt]) => cnt >= 2).map(([v]) => v)
+    );
+    for (const card of lowPureNormals) {
+      const v = getGameValue(card, currentLevel);
+      if ((lowValCounts.get(v) ?? 0) >= 2) continue;             // has pair partner
+      if (isPartOfNaturalStraight(v, lowNormalValues, lowValCounts)) continue; // in clean straight
+      if (isPartOfNaturalConsecPairs(v, lowPairRanks)) continue;  // in valid 连对
+      return [card.id]; // true junk single
+    }
+  }
+
+  // 6. Smallest low pair
   if (lowPairs.length > 0) return lowPairs[0].map(c => c.id);
 
-  // 6. Smallest low single
+  // 7. Smallest low single
   if (lowPureNormals.length > 0) return [lowPureNormals[0].id];
 
-  // 7. Orphan-first among big cards
+  // 8. Orphan-first among big cards
   const orphanSorted = sortByOrphanFirst(pureNormals, currentLevel);
   if (orphanSorted.length > 0) return [orphanSorted[0].id];
 
-  // 8. Last resort: wildcard / joker
+  // 9. Last resort: wildcard / joker
   return [sorted[0].id];
 }
 

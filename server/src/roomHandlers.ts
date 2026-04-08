@@ -845,7 +845,7 @@ function doPlayCards(io: Server, room: Room, player: import('@eggbomb/shared').P
   const playerHand = serverRoom.hands?.[player.id] ?? [];
   const playedCards = cardIds.map((id) => playerHand.find((c) => c.id === id)).filter(Boolean) as Card[];
   if (playedCards.length !== cardIds.length) {
-    console.warn(`[doPlayCards] seat=${player.seat} card ID mismatch: wanted ${cardIds.length}, found ${playedCards.length}. IDs=${JSON.stringify(cardIds)} handSize=${playerHand.length}`);
+    console.warn(`[${room.code}][doPlayCards] seat=${player.seat} card ID mismatch: wanted ${cardIds.length}, found ${playedCards.length}. IDs=${JSON.stringify(cardIds)} handSize=${playerHand.length}`);
     return;
   }
 
@@ -858,12 +858,12 @@ function doPlayCards(io: Server, room: Room, player: import('@eggbomb/shared').P
     handResult = classifyHand(playedCards, currentLevel);
   }
   if (!handResult) {
-    console.warn(`[doPlayCards] seat=${player.seat} unclassifiable hand: ${JSON.stringify(cardIds)}`);
+    console.warn(`[${room.code}][doPlayCards] seat=${player.seat} unclassifiable hand: ${JSON.stringify(cardIds)}`);
     return;
   }
   if (room.lastPlay && room.lastPlay.playerId !== player.id) {
     if (!canBeat(handResult, room.lastPlay.hand)) {
-      console.warn(`[doPlayCards] seat=${player.seat} can't beat lastPlay: hand=${JSON.stringify(handResult)} vs lastPlay=${JSON.stringify(room.lastPlay.hand)}`);
+      console.warn(`[${room.code}][doPlayCards] seat=${player.seat} can't beat lastPlay: hand=${JSON.stringify(handResult)} vs lastPlay=${JSON.stringify(room.lastPlay.hand)}`);
       return;
     }
   }
@@ -934,7 +934,7 @@ function doPassTurn(io: Server, room: Room, player: import('@eggbomb/shared').Pl
 }
 
 // ISMCTS thinking time for bot players (ms). Managed human players use instant rule bot.
-const BOT_THINK_LEAD_MS = 6000;  // leading a new round (more strategic uncertainty)
+const BOT_THINK_LEAD_MS = 7000;  // leading a new round (more strategic uncertainty)
 const BOT_THINK_FOLLOW_MS = 4000; // following an existing play
 
 function scheduleBotTurn(io: Server, room: Room): void {
@@ -982,11 +982,11 @@ function scheduleBotTurn(io: Server, room: Room): void {
         // Re-fetch room after async wait — state may have changed
         const roomAfter = getRoomByCode(roomCode) as ServerRoom | undefined;
         if (!roomAfter || roomAfter.phase !== GamePhase.PLAYING) {
-          console.log(`${ismctsLog} → room gone/phase changed`);
+          console.log(`[${roomCode}] ${ismctsLog} → room gone/phase changed`);
           return;
         }
         if (roomAfter.currentTurn !== seatSnapshot) {
-          console.log(`${ismctsLog} → turn changed to ${roomAfter.currentTurn}`);
+          console.log(`[${roomCode}] ${ismctsLog} → turn changed to ${roomAfter.currentTurn}`);
           return;
         }
         // If ISMCTS says pass but we're leading, fall back to rule bot
@@ -1009,13 +1009,13 @@ function scheduleBotTurn(io: Server, room: Room): void {
         }
         if (!cardIds || cardIds.length === 0) {
           if (roomAfter.lastPlay) {
-            console.log(`${ismctsLog} → passes`);
+            console.log(`[${roomCode}] ${ismctsLog} → passes`);
             doPassTurn(io, roomAfter, currentPlayer);
           } else {
-            console.warn(`${ismctsLog} → no move and no lastPlay (unexpected)`);
+            console.warn(`[${roomCode}] ${ismctsLog} → no move and no lastPlay (unexpected)`);
           }
         } else {
-          console.log(`${ismctsLog} → plays ${cardIds.length} cards`);
+          console.log(`[${roomCode}] ${ismctsLog} → plays ${cardIds.length} cards`);
           doPlayCards(io, roomAfter, currentPlayer, cardIds, intendedType);
         }
         return;
@@ -1040,7 +1040,7 @@ function scheduleBotTurn(io: Server, room: Room): void {
 
     if (!cardIds || cardIds.length === 0) {
       if (freshRoom.lastPlay) {
-        console.log(`[Bot] seat=${seatSnapshot} passes`);
+        console.log(`[${roomCode}] [Bot] seat=${seatSnapshot} passes`);
         doPassTurn(io, freshRoom, currentPlayer);
       }
     } else {
