@@ -15,7 +15,7 @@ Online 掼蛋 (Guan Dan) card game — create a room, invite friends, and play i
 
 ## Tech Stack
 
-- **Frontend**: React + TypeScript + Vite
+- **Frontend**: React + TypeScript + Vite — responsive layout, optimized for both desktop and mobile landscape
 - **Backend**: Node.js + Express + Socket.io
 - **Shared**: TypeScript types and game logic shared between client and server
 - **Monorepo**: npm workspaces
@@ -59,3 +59,7 @@ npm start
 ```
 
 Then serve `client/dist/` with a static file server or reverse proxy pointing to the same origin as the backend.
+
+## Deployment
+
+Deployed on a VPS with Nginx (static frontend + WebSocket proxy) and PM2 for process management.

@@ -80,17 +80,25 @@ const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer
             {isCurrentPlayer && ' (你)'}
           </span>
           <div style={styles.statusRow}>
-            {player!.isBot && <span style={styles.botBadge}>机器人</span>}
-            <span
-              style={{
-                ...styles.readyBadge,
-                background: player!.isReady ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.05)',
-                color: player!.isReady ? '#81c784' : '#888',
-                borderColor: player!.isReady ? '#81c784' : 'rgba(255,255,255,0.1)',
-              }}
-            >
-              {player!.isReady ? '已准备' : '未准备'}
-            </span>
+            {player!.isBot ? (
+              <>
+                <span style={styles.botBadge}>机器人</span>
+                <span style={player!.botDifficulty === 'medium' ? styles.diffBadgeMedium : styles.diffBadgeEasy}>
+                  {player!.botDifficulty === 'medium' ? '中等' : '简单'}
+                </span>
+              </>
+            ) : (
+              <span
+                style={{
+                  ...styles.readyBadge,
+                  background: player!.isReady ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.05)',
+                  color: player!.isReady ? '#81c784' : '#888',
+                  borderColor: player!.isReady ? '#81c784' : 'rgba(255,255,255,0.1)',
+                }}
+              >
+                {player!.isReady ? '已准备' : '未准备'}
+              </span>
+            )}
           </div>
         </>
       )}
@@ -183,6 +191,22 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(156,39,176,0.2)',
     color: '#ce93d8',
     border: '1px solid #ce93d8',
+  },
+  diffBadgeEasy: {
+    fontSize: '0.7rem',
+    padding: '0.2rem 0.5rem',
+    borderRadius: '20px',
+    background: 'rgba(255,255,255,0.06)',
+    color: '#aaa',
+    border: '1px solid rgba(255,255,255,0.15)',
+  },
+  diffBadgeMedium: {
+    fontSize: '0.7rem',
+    padding: '0.2rem 0.5rem',
+    borderRadius: '20px',
+    background: 'rgba(79,195,247,0.15)',
+    color: '#4fc3f7',
+    border: '1px solid rgba(79,195,247,0.35)',
   },
 };
 

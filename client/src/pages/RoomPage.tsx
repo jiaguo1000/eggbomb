@@ -43,8 +43,8 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
     socket.emit(SOCKET_EVENTS.CHOOSE_SEAT, { seat });
   };
 
-  const handleAddBot = (seat: PlayerSeat) => {
-    socket.emit(SOCKET_EVENTS.ADD_BOT, { seat });
+  const handleAddBot = (seat: PlayerSeat, difficulty: 'easy' | 'medium') => {
+    socket.emit(SOCKET_EVENTS.ADD_BOT, { seat, difficulty });
   };
 
   const handleRemoveBot = (seat: PlayerSeat) => {
@@ -108,8 +108,11 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
           <div style={{ gridArea: 'north', display: 'flex', justifyContent: 'center' }}>
             <div style={{ display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: 'center', gap: '4px' }}>
               <SeatDisplay seat={2} player={getPlayerAtSeat(2)} isCurrentPlayer={me?.seat === 2} onSitDown={handleSitDown} compact={compact} />
-              {!getPlayerAtSeat(2) && (
-                <button style={isHost ? styles.botBtn : styles.botBtnDisabled} disabled={!isHost} title={isHost ? '' : '只有房主可以添加机器人'} onClick={() => handleAddBot(2 as PlayerSeat)}>+机器人</button>
+              {!getPlayerAtSeat(2) && isHost && (
+                <div style={styles.botBtnGroup}>
+                  <button style={styles.botBtn} onClick={() => handleAddBot(2 as PlayerSeat, 'easy')}>+简单</button>
+                  <button style={styles.botBtnMedium} onClick={() => handleAddBot(2 as PlayerSeat, 'medium')}>+中等</button>
+                </div>
               )}
               {getPlayerAtSeat(2)?.isBot && (
                 <button style={isHost ? styles.kickBtn : styles.kickBtnDisabled} disabled={!isHost} title={isHost ? '' : '只有房主可以移除机器人'} onClick={() => handleRemoveBot(2 as PlayerSeat)}>踢出</button>
@@ -121,8 +124,11 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
           <div style={{ gridArea: 'west', display: 'flex', alignItems: 'center' }}>
             <div style={{ display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: 'center', gap: '4px' }}>
               <SeatDisplay seat={1} player={getPlayerAtSeat(1)} isCurrentPlayer={me?.seat === 1} onSitDown={handleSitDown} compact={compact} />
-              {!getPlayerAtSeat(1) && (
-                <button style={isHost ? styles.botBtn : styles.botBtnDisabled} disabled={!isHost} title={isHost ? '' : '只有房主可以添加机器人'} onClick={() => handleAddBot(1 as PlayerSeat)}>+机器人</button>
+              {!getPlayerAtSeat(1) && isHost && (
+                <div style={styles.botBtnGroup}>
+                  <button style={styles.botBtn} onClick={() => handleAddBot(1 as PlayerSeat, 'easy')}>+简单</button>
+                  <button style={styles.botBtnMedium} onClick={() => handleAddBot(1 as PlayerSeat, 'medium')}>+中等</button>
+                </div>
               )}
               {getPlayerAtSeat(1)?.isBot && (
                 <button style={isHost ? styles.kickBtn : styles.kickBtnDisabled} disabled={!isHost} title={isHost ? '' : '只有房主可以移除机器人'} onClick={() => handleRemoveBot(1 as PlayerSeat)}>踢出</button>
@@ -186,8 +192,11 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
           <div style={{ gridArea: 'east', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
             <div style={{ display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: 'center', gap: '4px' }}>
               <SeatDisplay seat={3} player={getPlayerAtSeat(3)} isCurrentPlayer={me?.seat === 3} onSitDown={handleSitDown} compact={compact} />
-              {!getPlayerAtSeat(3) && (
-                <button style={isHost ? styles.botBtn : styles.botBtnDisabled} disabled={!isHost} title={isHost ? '' : '只有房主可以添加机器人'} onClick={() => handleAddBot(3 as PlayerSeat)}>+机器人</button>
+              {!getPlayerAtSeat(3) && isHost && (
+                <div style={styles.botBtnGroup}>
+                  <button style={styles.botBtn} onClick={() => handleAddBot(3 as PlayerSeat, 'easy')}>+简单</button>
+                  <button style={styles.botBtnMedium} onClick={() => handleAddBot(3 as PlayerSeat, 'medium')}>+中等</button>
+                </div>
               )}
               {getPlayerAtSeat(3)?.isBot && (
                 <button style={isHost ? styles.kickBtn : styles.kickBtnDisabled} disabled={!isHost} title={isHost ? '' : '只有房主可以移除机器人'} onClick={() => handleRemoveBot(3 as PlayerSeat)}>踢出</button>
@@ -199,8 +208,11 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
           <div style={{ gridArea: 'south', display: 'flex', justifyContent: 'center' }}>
             <div style={{ display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: 'center', gap: '4px' }}>
               <SeatDisplay seat={0} player={getPlayerAtSeat(0)} isCurrentPlayer={me?.seat === 0} onSitDown={handleSitDown} compact={compact} />
-              {!getPlayerAtSeat(0) && (
-                <button style={isHost ? styles.botBtn : styles.botBtnDisabled} disabled={!isHost} title={isHost ? '' : '只有房主可以添加机器人'} onClick={() => handleAddBot(0 as PlayerSeat)}>+机器人</button>
+              {!getPlayerAtSeat(0) && isHost && (
+                <div style={styles.botBtnGroup}>
+                  <button style={styles.botBtn} onClick={() => handleAddBot(0 as PlayerSeat, 'easy')}>+简单</button>
+                  <button style={styles.botBtnMedium} onClick={() => handleAddBot(0 as PlayerSeat, 'medium')}>+中等</button>
+                </div>
               )}
               {getPlayerAtSeat(0)?.isBot && (
                 <button style={isHost ? styles.kickBtn : styles.kickBtnDisabled} disabled={!isHost} title={isHost ? '' : '只有房主可以移除机器人'} onClick={() => handleRemoveBot(0 as PlayerSeat)}>踢出</button>
@@ -267,12 +279,25 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: '0.2rem',
   },
+  botBtnGroup: {
+    display: 'flex',
+    gap: '4px',
+  },
   botBtn: {
     background: 'rgba(255,255,255,0.07)',
     border: '1px solid rgba(255,255,255,0.15)',
     color: '#aaa',
     borderRadius: '6px',
-    padding: '3px 10px',
+    padding: '3px 8px',
+    fontSize: '0.75rem',
+    cursor: 'pointer',
+  },
+  botBtnMedium: {
+    background: 'rgba(79,195,247,0.12)',
+    border: '1px solid rgba(79,195,247,0.3)',
+    color: '#4fc3f7',
+    borderRadius: '6px',
+    padding: '3px 8px',
     fontSize: '0.75rem',
     cursor: 'pointer',
   },
@@ -281,7 +306,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(255,255,255,0.06)',
     color: '#444',
     borderRadius: '6px',
-    padding: '3px 10px',
+    padding: '3px 8px',
     fontSize: '0.75rem',
     cursor: 'not-allowed',
   },

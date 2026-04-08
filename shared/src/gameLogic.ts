@@ -2,7 +2,7 @@ import { Card, Suit, HandType, HandResult } from './types';
 
 /**
  * Returns the game value of a card for comparison purposes.
- * Order: 3<4<5<6<7<8<9<10<J<Q<K<A<2<[level card]<小王<大王
+ * Order: 2<3<4<5<6<7<8<9<10<J<Q<K<A<[level card]<小王<大王
  */
 export function getGameValue(card: Card, currentLevel: number): number {
   if (card.suit === Suit.JOKER) {
@@ -74,12 +74,6 @@ export function classifyHand(cards: Card[], currentLevel: number): HandResult | 
     return null;
   }
 
-  // ── TRIPLE_PAIR (5 cards: triple + pair) ──
-  if (total === 5) {
-    const result = tryTriplePair(normals, wildcards, currentLevel);
-    if (result) return result;
-  }
-
   // ── BOMB_QUAD (4 same) ──
   if (total === 4) {
     if (wc === 4) return { type: HandType.BOMB_QUAD, rank: 16, length: 4 };
@@ -90,10 +84,17 @@ export function classifyHand(cards: Card[], currentLevel: number): HandResult | 
     return null;
   }
 
-  // ── BOMB_5 (5 same) ──
+  // ── BOMB_5 (5 same) — checked before TRIPLE_PAIR: bombs take priority ──
+  // e.g. [3, 3, 3, wc, wc] is BOMB_5 not TRIPLE_PAIR
   if (total === 5) {
     const bombResult = tryNOfAKind(normals, wildcards, 5, HandType.BOMB_5, currentLevel);
     if (bombResult) return bombResult;
+  }
+
+  // ── TRIPLE_PAIR (5 cards: triple + pair) ──
+  if (total === 5) {
+    const result = tryTriplePair(normals, wildcards, currentLevel);
+    if (result) return result;
   }
 
   // ── BOMB_6 (6 same) ──
@@ -123,14 +124,14 @@ export function classifyHand(cards: Card[], currentLevel: number): HandResult | 
     const sfResult = tryStraightFlush(normals, wildcards, currentLevel);
     if (sfResult) return sfResult;
 
-    // ── CONSECUTIVE_PAIRS (3+ consecutive pairs, 6+ cards) ──
-    if (total >= 6 && total % 2 === 0) {
+    // ── CONSECUTIVE_PAIRS (exactly 3 consecutive pairs = 6 cards) ──
+    if (total === 6) {
       const cpResult = tryConsecutivePairs(normals, wildcards, currentLevel);
       if (cpResult) return cpResult;
     }
 
-    // ── CONSECUTIVE_TRIPLES (2+ consecutive triples, 6+ cards) ──
-    if (total >= 6 && total % 3 === 0) {
+    // ── CONSECUTIVE_TRIPLES (exactly 2 consecutive triples = 6 cards) ──
+    if (total === 6) {
       const ctResult = tryConsecutiveTriples(normals, wildcards, currentLevel);
       if (ctResult) return ctResult;
     }
@@ -290,8 +291,8 @@ function tryStraightFlush(normals: Card[], wildcards: Card[], currentLevel: numb
 
 function tryConsecutivePairs(normals: Card[], wildcards: Card[], currentLevel: number): HandResult | null {
   const total = normals.length + wildcards.length;
-  if (total < 6 || total % 2 !== 0) return null;
-  const pairs = total / 2;
+  if (total !== 6) return null;
+  const pairs = 3;
 
   // Use natural rank values; exclude jokers from consecutive pairs
   const vals: number[] = [];
@@ -330,13 +331,37 @@ function tryConsecutivePairs(normals: Card[], wildcards: Card[], currentLevel: n
     return { type: HandType.CONSECUTIVE_PAIRS, rank: maxV, length: total };
   }
 
+  // Wrap-around: A(14) adjacent to 2 — e.g. AA2233 (smallest consecutive pairs, rank=3)
+  if (vals.includes(14) && vals.includes(2)) {
+    const wrapGroups: Record<number, number> = {};
+    for (const v of vals) {
+      const wv = v === 14 ? 1 : v;
+      wrapGroups[wv] = (wrapGroups[wv] ?? 0) + 1;
+    }
+    const wrapEntries = Object.entries(wrapGroups)
+      .map(([v, cnt]) => ({ v: Number(v), cnt }))
+      .sort((a, b) => a.v - b.v);
+    const wrapMinV = wrapEntries[0].v;
+    const wrapMaxV = wrapEntries[wrapEntries.length - 1].v;
+    const wrapSpan = wrapMaxV - wrapMinV + 1;
+    let wrapWcNeeded = 0;
+    for (let v = wrapMinV; v <= wrapMaxV; v++) {
+      const cnt = wrapGroups[v] ?? 0;
+      if (cnt > 2) wrapWcNeeded += (cnt - 2);
+      else wrapWcNeeded += (2 - cnt);
+    }
+    if (wrapWcNeeded <= wc && wrapSpan === pairs) {
+      return { type: HandType.CONSECUTIVE_PAIRS, rank: wrapMaxV, length: total };
+    }
+  }
+
   return null;
 }
 
 function tryConsecutiveTriples(normals: Card[], wildcards: Card[], currentLevel: number): HandResult | null {
   const total = normals.length + wildcards.length;
-  if (total < 6 || total % 3 !== 0) return null;
-  const triples = total / 3;
+  if (total !== 6) return null; // exactly 2 consecutive triples (6 cards) — 777888 or 888999 etc.
+  const triples = 2;
 
   // Use natural rank values; exclude jokers
   const vals: number[] = [];
@@ -372,6 +397,30 @@ function tryConsecutiveTriples(normals: Card[], wildcards: Card[], currentLevel:
 
   if (wcNeeded <= wc && span === triples) {
     return { type: HandType.CONSECUTIVE_TRIPLES, rank: maxV, length: total };
+  }
+
+  // Wrap-around: A(14) adjacent to 2 — e.g. AAA222 (smallest consecutive triples, rank=2)
+  if (vals.includes(14) && vals.includes(2)) {
+    const wrapGroups: Record<number, number> = {};
+    for (const v of vals) {
+      const wv = v === 14 ? 1 : v;
+      wrapGroups[wv] = (wrapGroups[wv] ?? 0) + 1;
+    }
+    const wrapEntries = Object.entries(wrapGroups)
+      .map(([v, cnt]) => ({ v: Number(v), cnt }))
+      .sort((a, b) => a.v - b.v);
+    const wrapMinV = wrapEntries[0].v;
+    const wrapMaxV = wrapEntries[wrapEntries.length - 1].v;
+    const wrapSpan = wrapMaxV - wrapMinV + 1;
+    let wrapWcNeeded = 0;
+    for (let v = wrapMinV; v <= wrapMaxV; v++) {
+      const cnt = wrapGroups[v] ?? 0;
+      if (cnt > 3) wrapWcNeeded += (cnt - 3);
+      else wrapWcNeeded += (3 - cnt);
+    }
+    if (wrapWcNeeded <= wc && wrapSpan === triples) {
+      return { type: HandType.CONSECUTIVE_TRIPLES, rank: wrapMaxV, length: total };
+    }
   }
 
   return null;
@@ -503,7 +552,7 @@ export function classifyAllPossible(cards: Card[], currentLevel: number): HandRe
 
   // 7 cards
   if (total === 7) {
-    const types = [HandType.BOMB_7, HandType.CONSECUTIVE_PAIRS, HandType.CONSECUTIVE_TRIPLES, HandType.STRAIGHT, HandType.STRAIGHT_FLUSH];
+    const types = [HandType.BOMB_7, HandType.STRAIGHT, HandType.STRAIGHT_FLUSH];
     for (const type of types) {
       const r = trySpecificType(cards, normals, wildcards, type, currentLevel, vals, hasJokerInNormals);
       if (r) results.push(r);
@@ -513,7 +562,7 @@ export function classifyAllPossible(cards: Card[], currentLevel: number): HandRe
 
   // 8 cards
   if (total === 8) {
-    const types = [HandType.BOMB_8, HandType.CONSECUTIVE_PAIRS, HandType.CONSECUTIVE_TRIPLES, HandType.STRAIGHT, HandType.STRAIGHT_FLUSH];
+    const types = [HandType.BOMB_8, HandType.STRAIGHT, HandType.STRAIGHT_FLUSH];
     for (const type of types) {
       const r = trySpecificType(cards, normals, wildcards, type, currentLevel, vals, hasJokerInNormals);
       if (r) results.push(r);
@@ -523,7 +572,7 @@ export function classifyAllPossible(cards: Card[], currentLevel: number): HandRe
 
   // 9+ cards
   if (total >= 9) {
-    const types = [HandType.CONSECUTIVE_PAIRS, HandType.CONSECUTIVE_TRIPLES, HandType.STRAIGHT, HandType.STRAIGHT_FLUSH];
+    const types = [HandType.STRAIGHT, HandType.STRAIGHT_FLUSH];
     for (const type of types) {
       const r = trySpecificType(cards, normals, wildcards, type, currentLevel, vals, hasJokerInNormals);
       if (r) results.push(r);
@@ -572,10 +621,10 @@ function trySpecificType(
       if (total < 5) return null;
       return tryStraightFlush(normals, wildcards, currentLevel);
     case HandType.CONSECUTIVE_PAIRS:
-      if (total < 6 || total % 2 !== 0) return null;
+      if (total !== 6) return null;
       return tryConsecutivePairs(normals, wildcards, currentLevel);
     case HandType.CONSECUTIVE_TRIPLES:
-      if (total < 6 || total % 3 !== 0) return null;
+      if (total !== 6) return null;
       return tryConsecutiveTriples(normals, wildcards, currentLevel);
     default:
       return null;

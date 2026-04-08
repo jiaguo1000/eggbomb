@@ -358,7 +358,11 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
               </div>
             ) : (
               <div style={styles.noLastPlay}>
-                {currentRoom.lastPlay ? '等待出牌...' : '新一轮'}
+                {(() => {
+                  const currentTurnPlayer = currentRoom.players.find(p => p.seat === currentRoom.currentTurn);
+                  const name = currentTurnPlayer?.name ?? '...';
+                  return currentRoom.lastPlay ? `等待 ${name} 出牌` : '新一轮';
+                })()}
               </div>
             )}
             {currentRoom.lastPlay && (
@@ -1016,7 +1020,7 @@ const roundPlayStyles: Record<string, React.CSSProperties> = {
 };
 
 const OpponentDisplay: React.FC<{
-  player: { id: string; name: string; seat: PlayerSeat | null; teamId: number | null };
+  player: { id: string; name: string; seat: PlayerSeat | null; teamId: number | null; isBot?: boolean; botDifficulty?: 'easy' | 'medium' };
   handCount: number;
   isCurrentTurn: boolean;
   isFinished: boolean;
@@ -1027,6 +1031,11 @@ const OpponentDisplay: React.FC<{
   <div style={{ ...oppStyles.container, ...(compact ? { padding: '5px 10px', minWidth: '100px' } : {}), ...(isCurrentTurn ? oppStyles.active : {}), ...(isDisconnected ? oppStyles.disconnected : {}) }}>
     <div style={{ ...oppStyles.name, ...(compact ? { fontSize: '0.75rem', marginBottom: '2px' } : {}) }}>
       {player.name} ({SEAT_LABELS[player.seat ?? 0]})
+      {player.isBot && (
+        <span style={player.botDifficulty === 'medium' ? oppStyles.diffBadgeMedium : oppStyles.diffBadgeEasy}>
+          {player.botDifficulty === 'medium' ? '中等' : '简单'}
+        </span>
+      )}
       {compact && !isFinished && <span style={{ color: '#4fc3f7', fontWeight: 700, marginLeft: '5px' }}>牌数：{handCount <= 10 ? handCount : '?'}</span>}
       {compact && isFinished && <span style={{ color: '#81c784', fontWeight: 700, marginLeft: '5px', fontSize: '0.72rem' }}>已出完 🎉</span>}
     </div>
@@ -1058,6 +1067,8 @@ const oppStyles: Record<string, React.CSSProperties> = {
   disconnected: { opacity: 0.6, border: '1px solid rgba(255,100,100,0.4)' },
   disconnectedBadge: { background: 'rgba(255,80,80,0.2)', color: '#ef9a9a', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, padding: '1px 5px', border: '1px solid rgba(255,80,80,0.4)' },
   empty: { color: '#555', fontSize: '0.85rem', padding: '20px' },
+  diffBadgeEasy: { background: 'rgba(255,255,255,0.06)', color: '#aaa', borderRadius: '4px', fontSize: '0.62rem', fontWeight: 600, padding: '1px 5px', border: '1px solid rgba(255,255,255,0.15)', marginLeft: '4px', verticalAlign: 'middle' },
+  diffBadgeMedium: { background: 'rgba(79,195,247,0.15)', color: '#4fc3f7', borderRadius: '4px', fontSize: '0.62rem', fontWeight: 600, padding: '1px 5px', border: '1px solid rgba(79,195,247,0.35)', marginLeft: '4px', verticalAlign: 'middle' },
 };
 
 const styles: Record<string, React.CSSProperties> = {

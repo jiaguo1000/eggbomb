@@ -39,6 +39,7 @@ export interface Player {
   teamId: Team | null;
   isReady: boolean;
   isBot: boolean;
+  botDifficulty?: 'easy' | 'medium';
 }
 
 // --------------- Room / Game Types ---------------

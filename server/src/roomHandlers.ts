@@ -31,12 +31,99 @@ import {
   isRoomReady,
 } from './gameManager';
 import { MAX_ROOMS } from './index';
-import { dealCards } from './cardUtils';
+import { dealCards, createDeck } from './cardUtils';
 import { classifyHand, classifyAllPossible, canBeat, HandResult, getGameValue, isWildcard } from '@eggbomb/shared';
 import { getBotMove } from './botLogic';
+import { ISMCTSContext } from './ismcts';
+import { Worker } from 'worker_threads';
+import path from 'path';
 import { pickBotName } from './botNames';
 
+// Run ISMCTS in a worker thread so it doesn't block the event loop.
+function runISMCTS(ctx: ISMCTSContext, budgetMs: number): Promise<import('./ismcts').ISMCTSResult> {
+  const fallback = (log: string): import('./ismcts').ISMCTSResult => ({ cardIds: null, log });
+  return new Promise((resolve) => {
+    // Support both ts-node (dev) and compiled JS (prod).
+    const isTs = __filename.endsWith('.ts');
+    const workerFile = isTs
+      ? path.join(__dirname, 'ismcts.worker.ts')
+      : path.join(__dirname, 'ismcts.worker.js');
+    const execArgv = isTs
+      ? ['-r', 'ts-node/register', '-r', 'tsconfig-paths/register']
+      : [];
+
+    const ctxSerialized = { ...ctx, playedCardIds: [...ctx.playedCardIds] };
+    const worker = new Worker(workerFile, {
+      workerData: { ctx: ctxSerialized, budgetMs },
+      execArgv,
+    });
+    worker.on('message', resolve);
+    worker.on('error', (err) => {
+      console.error('[ISMCTS worker error]', err);
+      resolve(fallback(`[ISMCTS] seat=${ctx.mySeat} worker error`));
+    });
+    worker.on('exit', (code) => {
+      if (code !== 0) resolve(fallback(`[ISMCTS] seat=${ctx.mySeat} worker exit ${code}`));
+    });
+  });
+}
+
 // --------------- Helpers ---------------
+
+function getBotMoveContext(room: Room & { hands?: Record<string, import('@eggbomb/shared').Card[]> }, playerId: string) {
+  const player = room.players.find(p => p.id === playerId);
+  const teammate = room.players.find(p => p.teamId === player?.teamId && p.id !== playerId);
+  const opponents = room.players.filter(p => p.teamId !== player?.teamId);
+  const teammateHandCount = teammate ? (room.hands?.[teammate.id]?.length ?? 27) : 27;
+  const opponentHandCounts = opponents.map(p => room.hands?.[p.id]?.length ?? 27);
+  const lastPlayHandCount = room.lastPlay
+    ? (room.hands?.[room.lastPlay.playerId]?.length ?? undefined)
+    : undefined;
+  return { teammate, teammateHandCount, opponentHandCounts, lastPlayHandCount };
+}
+
+function buildISMCTSContext(room: ServerRoom, currentPlayer: Player): ISMCTSContext {
+  const mySeat = currentPlayer.seat!;
+
+  // hand counts indexed by seat
+  const handCounts: number[] = [0, 0, 0, 0];
+  for (const p of room.players) {
+    if (p.seat !== null) handCounts[p.seat] = room.hands?.[p.id]?.length ?? 0;
+  }
+
+  // teams indexed by seat
+  const teams: number[] = [0, 0, 0, 0];
+  for (const p of room.players) {
+    if (p.seat !== null && p.teamId !== null) teams[p.seat] = p.teamId;
+  }
+
+  // played card IDs = full deck minus all cards still in hands
+  const fullDeck = createDeck();
+  const inHandIds = new Set<string>();
+  for (const cards of Object.values(room.hands ?? {})) {
+    for (const c of cards) inHandIds.add(c.id);
+  }
+  const playedCardIds = new Set<string>(
+    fullDeck.filter(c => !inHandIds.has(c.id)).map(c => c.id)
+  );
+
+  // finish order as seat numbers
+  const finishOrder = room.finishOrder
+    .map(pid => room.players.find(p => p.id === pid)?.seat ?? -1)
+    .filter(s => s >= 0);
+
+  return {
+    mySeat,
+    myHand: room.hands?.[currentPlayer.id] ?? [],
+    handCounts,
+    teams,
+    lastPlay: room.lastPlay,
+    consecutivePasses: room.consecutivePasses,
+    currentLevel: room.currentGameLevel ?? 2,
+    playedCardIds,
+    finishOrder,
+  };
+}
 
 function broadcastRoomUpdate(io: Server, room: Room): void {
   io.to(room.code).emit(SOCKET_EVENTS.ROOM_UPDATE, { room });
@@ -199,7 +286,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
   });
 
   // ── add_bot ───────────────────────────────────────────────────────────────
-  socket.on(SOCKET_EVENTS.ADD_BOT, (payload: { seat: PlayerSeat }) => {
+  socket.on(SOCKET_EVENTS.ADD_BOT, (payload: { seat: PlayerSeat; difficulty?: 'easy' | 'medium' }) => {
     const room = getSocketRoom(socket);
     if (!room) return emitError(socket, '你不在任何房间中');
     if (room.phase !== GamePhase.WAITING) return emitError(socket, '只能在等待阶段添加机器人');
@@ -207,7 +294,7 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     const player = getSocketPlayer(socket, room);
     if (!player || player.id !== room.hostId) return emitError(socket, '只有房主可以添加机器人');
 
-    const { seat } = payload ?? {};
+    const { seat, difficulty = 'easy' } = payload ?? {};
     const validSeats: PlayerSeat[] = [0, 1, 2, 3];
     if (!validSeats.includes(seat)) return emitError(socket, '无效座位');
     if (room.players.some((p) => p.seat === seat)) return emitError(socket, '座位已有玩家');
@@ -221,11 +308,12 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       teamId: seat % 2 === 0 ? 0 : 1,
       isReady: true,
       isBot: true,
+      botDifficulty: difficulty,
     };
     room.players.push(botPlayer);
     updateRoom(room);
     broadcastRoomUpdate(io, room);
-    console.log(`[Room] Room ${room.code} — 添加机器人 ${botPlayer.name} (座位 ${seat})`);
+    console.log(`[Room] Room ${room.code} — 添加机器人 ${botPlayer.name} (座位 ${seat}, 难度: ${difficulty})`);
 
     if (isRoomReady(room)) {
       startGame(io, room);
@@ -338,8 +426,8 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     const serverRoom = room as ServerRoom;
     const hand = serverRoom.hands?.[player.id] ?? [];
     const currentLevel = room.currentGameLevel ?? 2;
-    const teammate = room.players.find((p) => p.teamId === player.teamId && p.id !== player.id);
-    const move = getBotMove(hand, room.lastPlay, currentLevel, teammate?.id);
+    const { teammate, teammateHandCount, opponentHandCounts, lastPlayHandCount } = getBotMoveContext(serverRoom, player.id);
+    const move = getBotMove(hand, room.lastPlay, currentLevel, teammate?.id, teammateHandCount, opponentHandCounts, lastPlayHandCount);
     socket.emit(SOCKET_EVENTS.HINT, { cardIds: move?.cardIds ?? [] });
   });
 
@@ -353,8 +441,8 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     const serverRoom = room as ServerRoom;
     const hand = serverRoom.hands?.[player.id] ?? [];
     const currentLevel = room.currentGameLevel ?? 2;
-    const teammate = room.players.find((p) => p.teamId === player.teamId && p.id !== player.id);
-    const move = getBotMove(hand, room.lastPlay, currentLevel, teammate?.id);
+    const { teammate, teammateHandCount, opponentHandCounts, lastPlayHandCount } = getBotMoveContext(serverRoom, player.id);
+    const move = getBotMove(hand, room.lastPlay, currentLevel, teammate?.id, teammateHandCount, opponentHandCounts, lastPlayHandCount);
     if (!move || move.cardIds.length === 0) {
       // pass
       if (room.lastPlay && room.lastPlay.playerId !== player.id) {
@@ -756,7 +844,10 @@ function doPlayCards(io: Server, room: Room, player: import('@eggbomb/shared').P
   const serverRoom = room as ServerRoom;
   const playerHand = serverRoom.hands?.[player.id] ?? [];
   const playedCards = cardIds.map((id) => playerHand.find((c) => c.id === id)).filter(Boolean) as Card[];
-  if (playedCards.length !== cardIds.length) return;
+  if (playedCards.length !== cardIds.length) {
+    console.warn(`[doPlayCards] seat=${player.seat} card ID mismatch: wanted ${cardIds.length}, found ${playedCards.length}. IDs=${JSON.stringify(cardIds)} handSize=${playerHand.length}`);
+    return;
+  }
 
   const currentLevel = room.currentGameLevel ?? 2;
   let handResult: import('@eggbomb/shared').HandResult | null;
@@ -766,9 +857,15 @@ function doPlayCards(io: Server, room: Room, player: import('@eggbomb/shared').P
   } else {
     handResult = classifyHand(playedCards, currentLevel);
   }
-  if (!handResult) return;
+  if (!handResult) {
+    console.warn(`[doPlayCards] seat=${player.seat} unclassifiable hand: ${JSON.stringify(cardIds)}`);
+    return;
+  }
   if (room.lastPlay && room.lastPlay.playerId !== player.id) {
-    if (!canBeat(handResult, room.lastPlay.hand)) return;
+    if (!canBeat(handResult, room.lastPlay.hand)) {
+      console.warn(`[doPlayCards] seat=${player.seat} can't beat lastPlay: hand=${JSON.stringify(handResult)} vs lastPlay=${JSON.stringify(room.lastPlay.hand)}`);
+      return;
+    }
   }
 
   const remainingCards = playerHand.filter((c) => !cardIds.includes(c.id));
@@ -836,6 +933,10 @@ function doPassTurn(io: Server, room: Room, player: import('@eggbomb/shared').Pl
   scheduleBotTurn(io, room);
 }
 
+// ISMCTS thinking time for bot players (ms). Managed human players use instant rule bot.
+const BOT_THINK_LEAD_MS = 6000;  // leading a new round (more strategic uncertainty)
+const BOT_THINK_FOLLOW_MS = 4000; // following an existing play
+
 function scheduleBotTurn(io: Server, room: Room): void {
   const currentPlayer = room.players.find((p) => p.seat === room.currentTurn);
   if (!currentPlayer) return;
@@ -843,18 +944,107 @@ function scheduleBotTurn(io: Server, room: Room): void {
   if (!isAutoPlay) return;
   const roomCode = room.code;
   const seatSnapshot = room.currentTurn;
-  setTimeout(() => {
+  setTimeout(async () => {
     const freshRoom = getRoomByCode(roomCode) as ServerRoom | undefined;
     if (!freshRoom || freshRoom.phase !== GamePhase.PLAYING) return;
     if (freshRoom.currentTurn !== seatSnapshot) return;
-    const hand = freshRoom.hands?.[currentPlayer.id] ?? [];
-    const currentLevel = freshRoom.currentGameLevel ?? 2;
-    const teammate = freshRoom.players.find((p) => p.teamId === currentPlayer.teamId && p.id !== currentPlayer.id);
-    const move = getBotMove(hand, freshRoom.lastPlay, currentLevel, teammate?.id);
-    if (!move) {
-      if (freshRoom.lastPlay) doPassTurn(io, freshRoom, currentPlayer);
+
+    let cardIds: string[] | null;
+    let intendedType: import('@eggbomb/shared').HandType | undefined;
+
+    if (currentPlayer.isBot && currentPlayer.botDifficulty === 'medium') {
+      // Medium bot: ISMCTS in worker thread (non-blocking).
+      // Skip ISMCTS when only 2 active players remain — outcome is determined by card counts,
+      // all candidates score identically, and ISMCTS wastes the full time budget.
+      const activePlayers = freshRoom.players.filter(p =>
+        p.seat !== null && !(freshRoom.finishOrder ?? []).includes(p.id)
+      ).length;
+      const ctx = buildISMCTSContext(freshRoom, currentPlayer);
+
+      if (activePlayers <= 2) {
+        // 2-player endgame: outcome determined by card counts, skip ISMCTS
+        const { teammate, teammateHandCount, opponentHandCounts, lastPlayHandCount } = getBotMoveContext(freshRoom, currentPlayer.id);
+        const move = getBotMove(ctx.myHand, freshRoom.lastPlay, ctx.currentLevel, teammate?.id, teammateHandCount, opponentHandCounts, lastPlayHandCount);
+        cardIds = move?.cardIds ?? null;
+        intendedType = move?.intendedType;
+      } else {
+        const isLead = !freshRoom.lastPlay;
+        const ismctsStart = Date.now();
+        const ismctsResult = await runISMCTS(ctx, isLead ? BOT_THINK_LEAD_MS : BOT_THINK_FOLLOW_MS);
+        // Ensure minimum think time even for forced (1-candidate) results
+        const ismctsElapsed = Date.now() - ismctsStart;
+        const minThinkMs = 1200; // combined with 800ms initial delay → 2s total minimum
+        if (ismctsElapsed < minThinkMs) {
+          await new Promise(r => setTimeout(r, minThinkMs - ismctsElapsed));
+        }
+        cardIds = ismctsResult.cardIds;
+        let ismctsLog = ismctsResult.log;
+        // Re-fetch room after async wait — state may have changed
+        const roomAfter = getRoomByCode(roomCode) as ServerRoom | undefined;
+        if (!roomAfter || roomAfter.phase !== GamePhase.PLAYING) {
+          console.log(`${ismctsLog} → room gone/phase changed`);
+          return;
+        }
+        if (roomAfter.currentTurn !== seatSnapshot) {
+          console.log(`${ismctsLog} → turn changed to ${roomAfter.currentTurn}`);
+          return;
+        }
+        // If ISMCTS says pass but we're leading, fall back to rule bot
+        if ((cardIds === null || cardIds.length === 0) && !roomAfter.lastPlay) {
+          const move = getBotMove(ctx.myHand, null, ctx.currentLevel);
+          cardIds = move?.cardIds ?? null;
+          intendedType = move?.intendedType;
+        }
+        // Fallback: if ISMCTS cardIds won't work (e.g. stale IDs), use rule bot on fresh hand
+        if (cardIds && cardIds.length > 0) {
+          const freshHand = roomAfter.hands?.[currentPlayer.id] ?? [];
+          const allFound = cardIds.every(id => freshHand.some(c => c.id === id));
+          if (!allFound) {
+            const { teammate, teammateHandCount, opponentHandCounts, lastPlayHandCount } = getBotMoveContext(roomAfter, currentPlayer.id);
+            const move = getBotMove(freshHand, roomAfter.lastPlay, ctx.currentLevel, teammate?.id, teammateHandCount, opponentHandCounts, lastPlayHandCount);
+            cardIds = move?.cardIds ?? null;
+            intendedType = move?.intendedType;
+            ismctsLog += ' → stale IDs, rule bot fallback';
+          }
+        }
+        if (!cardIds || cardIds.length === 0) {
+          if (roomAfter.lastPlay) {
+            console.log(`${ismctsLog} → passes`);
+            doPassTurn(io, roomAfter, currentPlayer);
+          } else {
+            console.warn(`${ismctsLog} → no move and no lastPlay (unexpected)`);
+          }
+        } else {
+          console.log(`${ismctsLog} → plays ${cardIds.length} cards`);
+          doPlayCards(io, roomAfter, currentPlayer, cardIds, intendedType);
+        }
+        return;
+      }
+    } else if (currentPlayer.isBot) {
+      // Easy bot: instant rule bot
+      const hand = freshRoom.hands?.[currentPlayer.id] ?? [];
+      const currentLevel = freshRoom.currentGameLevel ?? 2;
+      const { teammate, teammateHandCount, opponentHandCounts, lastPlayHandCount } = getBotMoveContext(freshRoom, currentPlayer.id);
+      const move = getBotMove(hand, freshRoom.lastPlay, currentLevel, teammate?.id, teammateHandCount, opponentHandCounts, lastPlayHandCount);
+      cardIds = move?.cardIds ?? null;
+      intendedType = move?.intendedType;
     } else {
-      doPlayCards(io, freshRoom, currentPlayer, move.cardIds, move.intendedType);
+      // Managed human player: instant rule bot (no delay)
+      const hand = freshRoom.hands?.[currentPlayer.id] ?? [];
+      const currentLevel = freshRoom.currentGameLevel ?? 2;
+      const { teammate, teammateHandCount, opponentHandCounts, lastPlayHandCount } = getBotMoveContext(freshRoom, currentPlayer.id);
+      const move = getBotMove(hand, freshRoom.lastPlay, currentLevel, teammate?.id, teammateHandCount, opponentHandCounts, lastPlayHandCount);
+      cardIds = move?.cardIds ?? null;
+      intendedType = move?.intendedType;
+    }
+
+    if (!cardIds || cardIds.length === 0) {
+      if (freshRoom.lastPlay) {
+        console.log(`[Bot] seat=${seatSnapshot} passes`);
+        doPassTurn(io, freshRoom, currentPlayer);
+      }
+    } else {
+      doPlayCards(io, freshRoom, currentPlayer, cardIds, intendedType);
     }
   }, 800);
 }
