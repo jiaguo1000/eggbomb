@@ -1713,20 +1713,7 @@ function handlePassiveLeave(io: Server, socket: Socket): void {
 
   console.log(`[${room.code}] [Room] "${player.name}" disconnected`);
 
-  if (room.phase === GamePhase.WAITING) {
-    // Waiting room: kick immediately
-    room.players = room.players.filter((p) => p.id !== playerId);
-    if (room.players.filter((p) => !p.isBot).length === 0) {
-      deleteRoom(room.code);
-      return;
-    }
-    transferHostIfNeeded(room, playerId);
-    updateRoom(room);
-    broadcastRoomUpdate(io, room);
-    return;
-  }
-
-  // Game: mark disconnected, allow rejoin
+  // Mark disconnected, allow rejoin regardless of phase
   const key = `${roomCode}:${playerId}`;
   const existing = disconnectTimers.get(key);
   if (existing) clearTimeout(existing);
@@ -1736,9 +1723,33 @@ function handlePassiveLeave(io: Server, socket: Socket): void {
   }
   updateRoom(room);
   broadcastRoomUpdate(io, room);
+
+  if (room.phase === GamePhase.WAITING) {
+    // Waiting room: kick after 15s grace period if no rejoin
+    const timer = setTimeout(() => {
+      const r = getRoomByCode(roomCode);
+      disconnectTimers.delete(key);
+      if (!r || r.phase !== GamePhase.WAITING) return;
+      // Still disconnected — now kick
+      r.players = r.players.filter((p) => p.id !== playerId);
+      r.disconnectedPlayerIds = (r.disconnectedPlayerIds ?? []).filter((id) => id !== playerId);
+      if (r.players.filter((p) => !p.isBot).length === 0) {
+        deleteRoom(r.code);
+        console.log(`[${r.code}] [Room] deleted — no players remaining after grace period`);
+        return;
+      }
+      transferHostIfNeeded(r, playerId);
+      updateRoom(r);
+      broadcastRoomUpdate(io, r);
+      console.log(`[${roomCode}] [Room] "${player.name}" kicked after 15s grace period`);
+    }, 15000);
+    disconnectTimers.set(key, timer);
+    return;
+  }
+
   scheduleRoomCleanup(io, room);
 
-  // After 30s with no rejoin: enter 托管
+  // Game: after 30s with no rejoin: enter 托管
   const timer = setTimeout(() => {
     const r = getRoomByCode(roomCode);
     disconnectTimers.delete(key);

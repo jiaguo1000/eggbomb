@@ -94,7 +94,7 @@ const CardComponent: React.FC<CardProps> = ({ card, selected, onClick, faceDown,
       )}
       {!isJoker && small && (
         <div style={styles.bottomRight}>
-          <span style={{ fontSize: '1.35rem', lineHeight: 1 }}>{suitSymbol}</span>
+          <span style={{ fontSize: '1.05rem', lineHeight: 1 }}>{suitSymbol}</span>
         </div>
       )}
       {isJoker && <JokerCenter isBig={isBigJoker} small={small} />}
@@ -164,12 +164,12 @@ const styles = {
     lineHeight: 1.1,
   }),
   rankText: (small?: boolean): React.CSSProperties => ({
-    fontSize: small ? '0.88rem' : '1.25rem',
+    fontSize: small ? '1rem' : '1.25rem',
     fontWeight: 700,
     lineHeight: 1,
   }),
   suitText: (small?: boolean): React.CSSProperties => ({
-    fontSize: small ? '0.82rem' : '1.25rem',
+    fontSize: small ? '0.70rem' : '1.25rem',
     lineHeight: 1,
   }),
   bottomRight: {

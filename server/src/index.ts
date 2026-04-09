@@ -32,6 +32,8 @@ const io = new Server(httpServer, {
     origin: CORS_ORIGIN,
     methods: ['GET', 'POST'],
   },
+  pingTimeout: 60000,   // wait 60s for pong before declaring disconnect
+  pingInterval: 25000,  // send ping every 25s
 });
 
 io.on('connection', (socket) => {

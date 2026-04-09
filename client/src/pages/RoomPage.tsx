@@ -86,11 +86,11 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
     <div style={styles.container}>
       {/* Header */}
       <div style={{ ...styles.header, ...(compact ? { padding: '0.2rem 0.75rem', gap: '0.3rem' } : {}) }}>
-        <button style={{ ...styles.leaveBtn, ...(compact ? { fontSize: '0.75rem', padding: '0.3rem 0.7rem' } : {}) }} onClick={() => setShowLeaveConfirm(true)}>
+        <button style={{ ...styles.leaveBtn, ...(compact ? { fontSize: '0.85rem', padding: '0.3rem 0.7rem' } : {}) }} onClick={() => setShowLeaveConfirm(true)}>
           ← 离开
         </button>
         <div style={styles.headerCenter}>
-          <span style={{ ...styles.phaseTag, ...(compact ? { fontSize: '0.68rem', padding: '0.15rem 0.5rem' } : {}) }}>{phaseLabels[room.phase] ?? room.phase}</span>
+          <span style={{ ...styles.phaseTag, ...(compact ? { fontSize: '0.78rem', padding: '0.15rem 0.5rem' } : {}) }}>{phaseLabels[room.phase] ?? room.phase}</span>
           {!compact && <span style={styles.playerCount}>{allPlayersCount}/4 人 · {readyCount} 准备</span>}
         </div>
         <div style={styles.roomCode}>
@@ -245,7 +245,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
       {/* Action bar */}
       <div style={{ ...styles.actionBar, ...(compact ? { padding: '0.2rem 1rem' } : {}) }}>
         {!hasSeat ? (
-          <p style={{ ...styles.actionHint, ...(compact ? { fontSize: '0.75rem' } : {}) }}>点击空座位入座</p>
+          <p style={{ ...styles.actionHint, ...(compact ? { fontSize: '0.88rem' } : {}) }}>点击空座位入座</p>
         ) : (
           <button
             style={{
@@ -309,8 +309,9 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#aaa',
     borderRadius: '6px',
     padding: '3px 8px',
-    fontSize: '0.75rem',
+    fontSize: '0.82rem',
     cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   botBtnMedium: {
     background: 'rgba(79,195,247,0.12)',
@@ -318,8 +319,9 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#4fc3f7',
     borderRadius: '6px',
     padding: '3px 8px',
-    fontSize: '0.75rem',
+    fontSize: '0.82rem',
     cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   botBtnDisabled: {
     background: 'rgba(255,255,255,0.02)',
@@ -327,8 +329,9 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#444',
     borderRadius: '6px',
     padding: '3px 8px',
-    fontSize: '0.75rem',
+    fontSize: '0.82rem',
     cursor: 'not-allowed',
+    whiteSpace: 'nowrap',
   },
   kickBtn: {
     background: 'rgba(220,50,50,0.15)',
@@ -336,7 +339,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#ef9a9a',
     borderRadius: '6px',
     padding: '3px 10px',
-    fontSize: '0.75rem',
+    fontSize: '0.82rem',
     cursor: 'pointer',
   },
   kickBtnDisabled: {
@@ -345,7 +348,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#555',
     borderRadius: '6px',
     padding: '3px 10px',
-    fontSize: '0.75rem',
+    fontSize: '0.82rem',
     cursor: 'not-allowed',
   },
   phaseTag: {
@@ -459,7 +462,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   teamText: {
-    fontSize: '0.72rem',
+    fontSize: '0.82rem',
     color: '#aaa',
     display: 'flex',
     alignItems: 'center',
@@ -471,11 +474,11 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(255,215,0,0.2)',
     borderRadius: '4px',
     padding: '0 0.3rem',
-    fontSize: '0.65rem',
+    fontSize: '0.75rem',
     fontWeight: 600,
   },
   waitingText: {
-    fontSize: '0.72rem',
+    fontSize: '0.82rem',
     color: '#555',
     textAlign: 'center',
   },
@@ -489,7 +492,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: 'wrap',
   },
   startLevelLabel: {
-    fontSize: '0.75rem',
+    fontSize: '0.82rem',
     color: '#666',
     flexShrink: 0,
   },
@@ -509,7 +512,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#888',
     borderRadius: '4px',
     padding: '1px 4px',
-    fontSize: '0.65rem',
+    fontSize: '0.75rem',
     fontWeight: 600,
     minWidth: '20px',
     textAlign: 'center',

@@ -39,7 +39,7 @@ const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer
         ...styles.seat,
         ...(isEmpty ? styles.emptySeat : styles.occupiedSeat),
         ...(isCurrentPlayer ? styles.currentPlayerSeat : {}),
-        ...(compact ? { minHeight: '44px', minWidth: '68px', padding: '0.15rem 0.35rem', gap: '0.1rem' } : {}),
+        ...(compact ? { minHeight: '48px', minWidth: '80px', padding: '0.2rem 0.5rem', gap: '0.15rem' } : {}),
         cursor: isEmpty ? 'pointer' : 'default',
         borderColor: isCurrentPlayer ? '#ffd700' : isEmpty ? 'rgba(255,255,255,0.15)' : teamColor,
       }}
@@ -47,7 +47,7 @@ const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer
       title={isEmpty ? `点击坐下 — ${SEAT_LABELS[seat]}` : player?.name}
     >
       {/* Seat label */}
-      <span style={styles.seatLabel}>{SEAT_LABELS[seat]}</span>
+      <span style={{ ...styles.seatLabel, ...(compact ? { fontSize: '0.82rem' } : {}) }}>{SEAT_LABELS[seat]}</span>
 
       {/* Avatar / icon — hidden in compact */}
       {!compact && (
@@ -72,10 +72,10 @@ const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer
 
       {/* Player info or empty state */}
       {isEmpty ? (
-        <span style={styles.emptyText}>空座位</span>
+        <span style={{ ...styles.emptyText, ...(compact ? { fontSize: '0.88rem' } : {}) }}>空座位</span>
       ) : (
         <>
-          <span style={{ ...styles.playerName, ...(compact ? { fontSize: '0.72rem' } : {}), color: isCurrentPlayer ? '#ffd700' : '#e0e0e0' }}>
+          <span style={{ ...styles.playerName, ...(compact ? { fontSize: '0.88rem' } : {}), color: isCurrentPlayer ? '#ffd700' : '#e0e0e0' }}>
             {player!.name}
             {isCurrentPlayer && ' (你)'}
           </span>
@@ -179,13 +179,13 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
   },
   readyBadge: {
-    fontSize: '0.7rem',
+    fontSize: '0.78rem',
     padding: '0.2rem 0.5rem',
     borderRadius: '20px',
     border: '1px solid',
   },
   botBadge: {
-    fontSize: '0.7rem',
+    fontSize: '0.78rem',
     padding: '0.2rem 0.5rem',
     borderRadius: '20px',
     background: 'rgba(156,39,176,0.2)',
@@ -193,7 +193,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid #ce93d8',
   },
   diffBadgeEasy: {
-    fontSize: '0.7rem',
+    fontSize: '0.78rem',
     padding: '0.2rem 0.5rem',
     borderRadius: '20px',
     background: 'rgba(255,255,255,0.06)',
@@ -201,7 +201,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid rgba(255,255,255,0.15)',
   },
   diffBadgeMedium: {
-    fontSize: '0.7rem',
+    fontSize: '0.78rem',
     padding: '0.2rem 0.5rem',
     borderRadius: '20px',
     background: 'rgba(79,195,247,0.15)',

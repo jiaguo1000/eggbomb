@@ -18,6 +18,8 @@ export default defineConfig({
         target: 'http://localhost:3001',
         ws: true,
         changeOrigin: true,
+        timeout: 0,
+        proxyTimeout: 0,
       },
       '/stats': {
         target: 'http://localhost:3001',

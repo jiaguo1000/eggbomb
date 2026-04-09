@@ -58,7 +58,6 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
   const [tributeReveal, setTributeReveal] = useState<{ fromName: string; toName: string; tributeCard: Card | null; returnCard: Card | null }[] | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoPlayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasPlayedFirstCardRef = useRef(false);
 
   const me = currentRoom.players.find((p) => p.id === playerId);
   const mySeat = me?.seat ?? 0;
@@ -73,7 +72,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
   useEffect(() => {
     const isManaged = (currentRoom.managedPlayerIds ?? []).includes(playerId);
     if (isMyTurn && !isManaged && currentRoom.phase === 'PLAYING') {
-      const turnLimit = hasPlayedFirstCardRef.current ? 30 : 60;
+      const turnLimit = myHand.length >= 27 ? 90 : 60;
       setTurnCountdown(turnLimit);
       countdownRef.current = setInterval(() => {
         setTurnCountdown((prev) => {
@@ -108,7 +107,6 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
       if (payload.playerId === playerId) {
         setMyHand((prev) => sortHand(prev.filter((c) => !payload.cards.find((pc) => pc.id === c.id)), currentLevel));
         setSelectedIds(new Set());
-        hasPlayedFirstCardRef.current = true;
       }
     };
 
@@ -155,7 +153,6 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
       setSelectedIds(new Set());
       setFinishedPlayers(new Set());
       setPassedSeats(new Set());
-      hasPlayedFirstCardRef.current = false;
     };
 
     socket.on(SOCKET_EVENTS.ROOM_UPDATE, handleRoomUpdate);
@@ -271,7 +268,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
       <style>{`@keyframes pulse { from { opacity: 1; transform: scale(1); } to { opacity: 0.7; transform: scale(1.06); } }`}</style>
       {/* Header bar */}
       <div style={{ ...styles.header, ...(compact ? { padding: '2px 8px' } : {}) }}>
-        <span style={{ ...styles.headerInfo, ...(compact ? { fontSize: '0.8rem' } : {}) }}>房间：{currentRoom.code}</span>
+        <span style={{ ...styles.headerInfo, ...(compact ? { fontSize: '0.88rem' } : {}) }}>房间：{currentRoom.code}</span>
         <div style={{ ...styles.headerLevels, ...(compact ? { gap: '6px' } : {}) }}>
           {[0, 1].map((team) => {
             const lvl = currentRoom.currentLevel[team as 0 | 1];
@@ -282,7 +279,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
             const isPlayingAce = lvl === 14 && failures > 0;
             const isPlaying = playingTeam === team;
             return (
-              <span key={team} style={{ ...styles.teamLevel, ...(isMine ? styles.teamLevelMine : {}), ...(isPlaying && !isMine ? styles.teamLevelPlaying : {}), ...(compact ? { fontSize: '0.78rem', padding: '2px 6px' } : {}) }}>
+              <span key={team} style={{ ...styles.teamLevel, ...(isMine ? styles.teamLevelMine : {}), ...(isPlaying && !isMine ? styles.teamLevelPlaying : {}), ...(compact ? { fontSize: '0.88rem', padding: '3px 8px' } : {}) }}>
                 {teamName}: {lvlLabel}
                 {isPlaying && <span style={{ color: '#ffd700', marginLeft: '5px', fontSize: '0.7rem', fontWeight: 700, background: 'rgba(255,215,0,0.15)', borderRadius: '3px', padding: '0 4px' }}>本盘</span>}
                 {isPlayingAce && (
@@ -307,15 +304,15 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
               <OpponentDisplay compact={compact} player={opponentTop} handCount={getHandCount(opponentTop.id)} isCurrentTurn={currentRoom.currentTurn === opponentTop.seat} isFinished={finishedPlayers.has(opponentTop.id)} isManaged={(currentRoom.managedPlayerIds ?? []).includes(opponentTop.id)} isDisconnected={(currentRoom.disconnectedPlayerIds ?? []).includes(opponentTop.id)} />
               {compact ? (
                 <div style={styles.compactPlayRow}>
-                  <CompactPlay cards={currentRoom.currentRoundPlays?.[oppositeSeat]?.cards} passed={passedSeats.has(oppositeSeat) && !currentRoom.currentRoundPlays?.[oppositeSeat]} />
+                  {currentRoom.currentTurn !== oppositeSeat && <CompactPlay cards={currentRoom.currentRoundPlays?.[oppositeSeat]?.cards} passed={passedSeats.has(oppositeSeat) && !currentRoom.currentRoundPlays?.[oppositeSeat]} currentLevel={currentLevel} />}
                 </div>
               ) : (
                 <div style={styles.oppPlayRow}>
-                  {passedSeats.has(oppositeSeat) && !currentRoom.currentRoundPlays?.[oppositeSeat] ? (
+                  {currentRoom.currentTurn !== oppositeSeat && (passedSeats.has(oppositeSeat) && !currentRoom.currentRoundPlays?.[oppositeSeat] ? (
                     <div style={{ color: '#ffb74d', fontSize: '1.1rem', fontWeight: 700, padding: '4px 10px', background: 'rgba(255,150,0,0.15)', borderRadius: '8px', border: '1px solid rgba(255,150,0,0.35)', letterSpacing: '0.05em' }}>过</div>
                   ) : (
                     <RoundPlayInline play={currentRoom.currentRoundPlays?.[oppositeSeat]} currentLevel={currentLevel} small />
-                  )}
+                  ))}
                 </div>
               )}
             </div>
@@ -331,15 +328,15 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                 <OpponentDisplay compact={compact} player={opponentLeft} handCount={getHandCount(opponentLeft.id)} isCurrentTurn={currentRoom.currentTurn === opponentLeft.seat} isFinished={finishedPlayers.has(opponentLeft.id)} isManaged={(currentRoom.managedPlayerIds ?? []).includes(opponentLeft.id)} isDisconnected={(currentRoom.disconnectedPlayerIds ?? []).includes(opponentLeft.id)} />
                 {compact ? (
                   <div style={styles.compactPlayRow}>
-                    <CompactPlay cards={currentRoom.currentRoundPlays?.[leftSeat]?.cards} passed={passedSeats.has(leftSeat) && !currentRoom.currentRoundPlays?.[leftSeat]} />
+                    {currentRoom.currentTurn !== leftSeat && <CompactPlay cards={currentRoom.currentRoundPlays?.[leftSeat]?.cards} passed={passedSeats.has(leftSeat) && !currentRoom.currentRoundPlays?.[leftSeat]} currentLevel={currentLevel} />}
                   </div>
                 ) : (
                   <div style={styles.oppPlayRow}>
-                    {passedSeats.has(leftSeat) && !currentRoom.currentRoundPlays?.[leftSeat] ? (
+                    {currentRoom.currentTurn !== leftSeat && (passedSeats.has(leftSeat) && !currentRoom.currentRoundPlays?.[leftSeat] ? (
                       <div style={{ color: '#ffb74d', fontSize: '1.1rem', fontWeight: 700, padding: '4px 10px', background: 'rgba(255,150,0,0.15)', borderRadius: '8px', border: '1px solid rgba(255,150,0,0.35)', letterSpacing: '0.05em' }}>过</div>
                     ) : (
                       <RoundPlayInline play={currentRoom.currentRoundPlays?.[leftSeat]} currentLevel={currentLevel} small />
-                    )}
+                    ))}
                   </div>
                 )}
               </div>
@@ -367,7 +364,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
               </div>
             )}
             {currentRoom.lastPlay && (
-              <div style={{ color: '#ffd700', fontSize: compact ? '0.82rem' : '0.72rem', marginTop: '4px', textAlign: 'center' }}>
+              <div style={{ color: '#ffd700', fontSize: compact ? '0.9rem' : '0.8rem', marginTop: '4px', textAlign: 'center' }}>
                 {currentRoom.players.find(p => p.id === currentRoom.lastPlay!.playerId)?.name}：{handTypeLabel(currentRoom.lastPlay.hand.type)} ({currentRoom.lastPlay.cards.length}张)
               </div>
             )}
@@ -380,15 +377,15 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                 <OpponentDisplay compact={compact} player={opponentRight} handCount={getHandCount(opponentRight.id)} isCurrentTurn={currentRoom.currentTurn === opponentRight.seat} isFinished={finishedPlayers.has(opponentRight.id)} isManaged={(currentRoom.managedPlayerIds ?? []).includes(opponentRight.id)} isDisconnected={(currentRoom.disconnectedPlayerIds ?? []).includes(opponentRight.id)} />
                 {compact ? (
                   <div style={styles.compactPlayRow}>
-                    <CompactPlay cards={currentRoom.currentRoundPlays?.[rightSeat]?.cards} passed={passedSeats.has(rightSeat) && !currentRoom.currentRoundPlays?.[rightSeat]} />
+                    {currentRoom.currentTurn !== rightSeat && <CompactPlay cards={currentRoom.currentRoundPlays?.[rightSeat]?.cards} passed={passedSeats.has(rightSeat) && !currentRoom.currentRoundPlays?.[rightSeat]} currentLevel={currentLevel} />}
                   </div>
                 ) : (
                   <div style={styles.oppPlayRow}>
-                    {passedSeats.has(rightSeat) && !currentRoom.currentRoundPlays?.[rightSeat] ? (
+                    {currentRoom.currentTurn !== rightSeat && (passedSeats.has(rightSeat) && !currentRoom.currentRoundPlays?.[rightSeat] ? (
                       <div style={{ color: '#ffb74d', fontSize: '1.1rem', fontWeight: 700, padding: '4px 10px', background: 'rgba(255,150,0,0.15)', borderRadius: '8px', border: '1px solid rgba(255,150,0,0.35)', letterSpacing: '0.05em' }}>过</div>
                     ) : (
                       <RoundPlayInline play={currentRoom.currentRoundPlays?.[rightSeat]} currentLevel={currentLevel} small />
-                    )}
+                    ))}
                   </div>
                 )}
               </div>
@@ -401,7 +398,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
           {/* My play this round — fixed height; cleared when it's my turn */}
           {compact ? (
             <div style={styles.compactPlayRow}>
-              {!isMyTurn && <CompactPlay cards={currentRoom.currentRoundPlays?.[mySeat]?.cards} passed={passedSeats.has(mySeat) && !currentRoom.currentRoundPlays?.[mySeat]} label="我" />}
+              {!isMyTurn && <CompactPlay cards={currentRoom.currentRoundPlays?.[mySeat]?.cards} passed={passedSeats.has(mySeat) && !currentRoom.currentRoundPlays?.[mySeat]} label="我" currentLevel={currentLevel} />}
             </div>
           ) : (
             <div style={styles.myPlayRow}>
@@ -424,7 +421,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
           <div style={{ ...styles.handScroll, ...(compact ? { minHeight: '72px', padding: '0 8px' } : {}) }}>
             {(() => {
               const overlap = compact ? 22 : 26;
-              const selOffset = compact ? 18 : 22;
+              const selOffset = compact ? 20 : 24;
               const cardW = compact ? 44 : 54;
               const totalWidth = Math.max(cardW, (myHand.length - 1) * overlap + cardW + selectedIds.size * selOffset);
               return (
@@ -974,7 +971,7 @@ function getCardLabel(card: Card): string {
   return (rankLabels[card.rank] ?? String(card.rank)) + suitSymbols[card.suit];
 }
 
-const CompactPlay: React.FC<{ cards?: Card[]; passed?: boolean; label?: string }> = ({ cards, passed, label }) => {
+const CompactPlay: React.FC<{ cards?: Card[]; passed?: boolean; label?: string; currentLevel?: number }> = ({ cards, passed, label, currentLevel }) => {
   if (passed) return (
     <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
       {label && <span style={{ color: '#888', fontSize: '0.72rem' }}>{label}</span>}
@@ -987,8 +984,19 @@ const CompactPlay: React.FC<{ cards?: Card[]; passed?: boolean; label?: string }
       {label && <span style={{ color: '#888', fontSize: '0.72rem', marginRight: '2px' }}>{label}</span>}
       {cards.slice(0, 6).map((c, i) => {
         const isRed = c.suit === Suit.HEART || c.suit === Suit.DIAMOND || (c.suit === Suit.JOKER && c.rank === 15);
+        const wild = currentLevel !== undefined && isWildcard(c, currentLevel);
         return (
-          <span key={i} style={{ background: 'rgba(255,255,255,0.88)', color: isRed ? '#c0392b' : '#1a1a1a', fontSize: '0.92rem', padding: '1px 5px', borderRadius: '2px', fontWeight: 700, lineHeight: '20px' }}>
+          <span key={i} style={{
+            background: wild ? 'linear-gradient(135deg, #fff9e6, #fffde7)' : 'rgba(255,255,255,0.88)',
+            color: isRed ? '#c0392b' : '#1a1a1a',
+            fontSize: '0.92rem',
+            padding: '1px 5px',
+            borderRadius: '2px',
+            fontWeight: 700,
+            lineHeight: '20px',
+            border: wild ? '1.5px solid #ffd700' : '1.5px solid transparent',
+            boxSizing: 'border-box',
+          }}>
             {getCardLabel(c)}
           </span>
         );
@@ -1053,7 +1061,7 @@ const OpponentDisplay: React.FC<{
   compact?: boolean;
 }> = ({ player, handCount, isCurrentTurn, isFinished, isManaged, isDisconnected, compact }) => (
   <div style={{ ...oppStyles.container, ...(compact ? { padding: '5px 10px', minWidth: '100px' } : {}), ...(isCurrentTurn ? oppStyles.active : {}), ...(isDisconnected ? oppStyles.disconnected : {}) }}>
-    <div style={{ ...oppStyles.name, ...(compact ? { fontSize: '0.85rem', marginBottom: '2px' } : {}) }}>
+    <div style={{ ...oppStyles.name, ...(compact ? { fontSize: '0.95rem', marginBottom: '2px' } : {}) }}>
       {player.name} ({SEAT_LABELS[player.seat ?? 0]})
       {player.isBot && (
         <span style={player.botDifficulty === 'medium' ? oppStyles.diffBadgeMedium : oppStyles.diffBadgeEasy}>
@@ -1114,15 +1122,15 @@ const styles: Record<string, React.CSSProperties> = {
   roundPlayEntry: { display: 'flex', alignItems: 'center', gap: '8px' },
   roundPlayName: { color: '#aaa', fontSize: '0.75rem', minWidth: '40px', textAlign: 'right', flexShrink: 0 },
   roundPlayCards: { display: 'flex', gap: '3px', flexWrap: 'wrap' },
-  noLastPlay: { color: '#666', fontSize: '0.95rem' },
+  noLastPlay: { color: '#666', fontSize: '1.05rem' },
   oppPlayRow: { height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   compactPlayRow: { height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   myPlayRow: { height: '80px', display: 'flex', alignItems: 'center' },
   turnIndicator: { marginTop: '8px', color: '#ffd700', fontWeight: 700, fontSize: '1.5rem', textShadow: '0 0 12px rgba(255,215,0,0.8)', letterSpacing: '0.02em' },
   myArea: { width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '8px' },
   myInfo: { display: 'flex', alignItems: 'center', gap: '12px' },
-  myName: { color: '#ffd700', fontWeight: 600, fontSize: '0.9rem' },
-  myCardCount: { color: '#aaa', fontSize: '0.85rem' },
+  myName: { color: '#ffd700', fontWeight: 600, fontSize: '1rem' },
+  myCardCount: { color: '#aaa', fontSize: '0.92rem' },
   finishedBadge: { background: '#81c784', color: '#1a1a1a', borderRadius: '4px', padding: '2px 8px', fontSize: '0.8rem', fontWeight: 700 },
   handScroll: { overflowX: 'auto', padding: '8px 8px 16px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', minHeight: '118px' },
   actions: { display: 'flex', gap: '10px', justifyContent: 'center', paddingBottom: 'env(safe-area-inset-bottom)' },
