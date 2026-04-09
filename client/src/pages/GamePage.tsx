@@ -48,6 +48,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
   const [handTypeChoices, setHandTypeChoices] = useState<HandResult[] | null>(null);
   const [pendingCardIds, setPendingCardIds] = useState<string[] | null>(null);
   const [chosenType, setChosenType] = useState<HandType | null>(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const [tributeState, setTributeState] = useState<TributeState | null>(null);
   const [passedSeats, setPassedSeats] = useState<Set<PlayerSeat>>(new Set());
@@ -293,7 +294,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
             );
           })}
         </div>
-        <button style={{ ...styles.leaveBtn, ...(compact ? { fontSize: '0.82rem', padding: '8px 14px', minHeight: '36px' } : {}) }} onClick={onLeave}>离开</button>
+        <button style={{ ...styles.leaveBtn, ...(compact ? { fontSize: '0.82rem', padding: '8px 14px', minHeight: '36px' } : {}) }} onClick={() => setShowLeaveConfirm(true)}>离开</button>
       </div>
 
       {/* Game table */}
@@ -423,7 +424,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
           <div style={{ ...styles.handScroll, ...(compact ? { minHeight: '72px', padding: '0 8px' } : {}) }}>
             {(() => {
               const overlap = compact ? 22 : 26;
-              const selOffset = compact ? 14 : 18;
+              const selOffset = compact ? 18 : 22;
               const cardW = compact ? 44 : 54;
               const totalWidth = Math.max(cardW, (myHand.length - 1) * overlap + cardW + selectedIds.size * selOffset);
               return (
@@ -908,6 +909,24 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
         }
         return null;
       })()}
+      {/* Leave confirmation modal */}
+      {showLeaveConfirm && (() => {
+        const otherHumans = currentRoom.players.filter((p) => !p.isBot && p.id !== playerId);
+        const msg = otherHumans.length > 0
+          ? '离开后将自动托管，其他玩家可以继续游戏。离开后无法重新加入本局。'
+          : '你是最后一位玩家，离开后房间将关闭。';
+        return (
+          <div style={gameConfirmStyles.overlay}>
+            <div style={gameConfirmStyles.box}>
+              <p style={gameConfirmStyles.text}>{msg}</p>
+              <div style={gameConfirmStyles.btns}>
+                <button style={gameConfirmStyles.cancelBtn} onClick={() => setShowLeaveConfirm(false)}>取消</button>
+                <button style={gameConfirmStyles.confirmBtn} onClick={onLeave}>确认离开</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
@@ -1145,6 +1164,15 @@ const tributeStyles: Record<string, React.CSSProperties> = {
   tributeCard: { display: 'flex', alignItems: 'center', gap: '12px', color: '#aaa', fontSize: '0.9rem' },
   handRow: { display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', minHeight: '70px' },
   tributeRow: { display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '4px 0' },
+};
+
+const gameConfirmStyles: Record<string, React.CSSProperties> = {
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  box: { background: '#1a2a35', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '14px', padding: '1.5rem 1.75rem', maxWidth: '360px', width: '90%', display: 'flex', flexDirection: 'column', gap: '1.25rem' },
+  text: { color: '#ddd', fontSize: '0.95rem', lineHeight: 1.5, textAlign: 'center' },
+  btns: { display: 'flex', gap: '0.75rem' },
+  cancelBtn: { flex: 1, padding: '0.65rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.07)', color: '#ccc', cursor: 'pointer', fontSize: '0.9rem' },
+  confirmBtn: { flex: 1, padding: '0.65rem', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #e53935, #c62828)', color: '#fff', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700 },
 };
 
 export default GamePage;

@@ -112,6 +112,10 @@ const App: React.FC = () => {
       setState((prev) => ({ ...prev, page: 'game' }));
     });
 
+    socket.on(SOCKET_EVENTS.REJOIN_FAIL, () => {
+      localStorage.removeItem(SESSION_KEY);
+    });
+
     socket.on(SOCKET_EVENTS.ERROR, ({ message }: { message: string }) => {
       alert(`错误: ${message}`);
     });
@@ -121,6 +125,7 @@ const App: React.FC = () => {
       socket.off('room_created');
       socket.off('room_joined');
       socket.off(SOCKET_EVENTS.REJOIN_SUCCESS);
+      socket.off(SOCKET_EVENTS.REJOIN_FAIL);
       socket.off(SOCKET_EVENTS.ROOM_UPDATE);
       socket.off(SOCKET_EVENTS.GAME_STARTED);
       socket.off(SOCKET_EVENTS.DEAL_CARDS);
@@ -132,6 +137,10 @@ const App: React.FC = () => {
   }, []);
 
   const goToLobby = () => {
+    // Synchronously reset stateRef to prevent race condition where a socket
+    // reconnect fires before setState(initialState) is committed, causing a
+    // stale REJOIN to be sent.
+    stateRef.current = initialState;
     socket.emit(SOCKET_EVENTS.LEAVE_ROOM);
     localStorage.removeItem(SESSION_KEY);
     setState(initialState);

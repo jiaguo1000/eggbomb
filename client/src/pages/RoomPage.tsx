@@ -30,6 +30,7 @@ interface RoomPageProps {
 const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
   const compact = useCompact();
   const [copied, setCopied] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const me = room.players.find((p) => p.id === playerId);
   const hasSeat = me?.seat !== null && me?.seat !== undefined;
@@ -85,7 +86,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
     <div style={styles.container}>
       {/* Header */}
       <div style={{ ...styles.header, ...(compact ? { padding: '0.2rem 0.75rem', gap: '0.3rem' } : {}) }}>
-        <button style={{ ...styles.leaveBtn, ...(compact ? { fontSize: '0.75rem', padding: '0.3rem 0.7rem' } : {}) }} onClick={onLeave}>
+        <button style={{ ...styles.leaveBtn, ...(compact ? { fontSize: '0.75rem', padding: '0.3rem 0.7rem' } : {}) }} onClick={() => setShowLeaveConfirm(true)}>
           ← 离开
         </button>
         <div style={styles.headerCenter}>
@@ -221,6 +222,25 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
           </div>
         </div>
       </div>
+
+      {/* Leave confirmation modal */}
+      {showLeaveConfirm && (() => {
+        const otherHumans = room.players.filter((p) => !p.isBot && p.id !== playerId);
+        const msg = otherHumans.length > 0
+          ? '确认离开房间？'
+          : '你是最后一位玩家，离开后房间将关闭。';
+        return (
+          <div style={confirmStyles.overlay}>
+            <div style={confirmStyles.box}>
+              <p style={confirmStyles.text}>{msg}</p>
+              <div style={confirmStyles.btns}>
+                <button style={confirmStyles.cancelBtn} onClick={() => setShowLeaveConfirm(false)}>取消</button>
+                <button style={confirmStyles.confirmBtn} onClick={onLeave}>确认离开</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Action bar */}
       <div style={{ ...styles.actionBar, ...(compact ? { padding: '0.2rem 1rem' } : {}) }}>
@@ -526,6 +546,15 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.8rem',
     color: '#555',
   },
+};
+
+const confirmStyles: Record<string, React.CSSProperties> = {
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  box: { background: '#1a2a35', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '14px', padding: '1.5rem 1.75rem', maxWidth: '360px', width: '90%', display: 'flex', flexDirection: 'column', gap: '1.25rem' },
+  text: { color: '#ddd', fontSize: '0.95rem', lineHeight: 1.5, textAlign: 'center' },
+  btns: { display: 'flex', gap: '0.75rem' },
+  cancelBtn: { flex: 1, padding: '0.65rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.07)', color: '#ccc', cursor: 'pointer', fontSize: '0.9rem' },
+  confirmBtn: { flex: 1, padding: '0.65rem', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #e53935, #c62828)', color: '#fff', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700 },
 };
 
 export default RoomPage;

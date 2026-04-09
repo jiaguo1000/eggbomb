@@ -390,9 +390,14 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
   // ── rejoin ────────────────────────────────────────────────────────────────
   socket.on(SOCKET_EVENTS.REJOIN, ({ roomCode, playerId }: { roomCode: string; playerId: string }) => {
     const room = getRoomByCode(roomCode);
-    if (!room) return; // room gone (server restart etc.) — silently ignore
+    if (!room) { socket.emit(SOCKET_EVENTS.REJOIN_FAIL); return; }
+    // Reject if player actively left — they cannot rejoin
+    if (activelyLeftPlayers.get(roomCode)?.has(playerId)) {
+      socket.emit(SOCKET_EVENTS.REJOIN_FAIL);
+      return;
+    }
     const player = room.players.find((p) => p.id === playerId && !p.isBot);
-    if (!player) return; // player not found — silently ignore
+    if (!player) { socket.emit(SOCKET_EVENTS.REJOIN_FAIL); return; }
 
     // Cancel pending disconnect/托管 timer
     const key = `${roomCode}:${playerId}`;
@@ -828,11 +833,11 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
 
   // ── leave_room ────────────────────────────────────────────────────────────
   socket.on(SOCKET_EVENTS.LEAVE_ROOM, () => {
-    handleLeave(io, socket);
+    handleActiveLeave(io, socket);
   });
 
   socket.on('disconnect', () => {
-    handleLeave(io, socket);
+    handlePassiveLeave(io, socket);
   });
 }
 
@@ -1570,6 +1575,29 @@ function startTribute(io: Server, room: Room): void {
 
 // --------------- Disconnect / leave ---------------
 
+// roomCode -> Set of playerIds who actively left (cannot rejoin)
+const activelyLeftPlayers = new Map<string, Set<string>>();
+
+/** Players who are human, haven't actively left, and are not the one currently leaving */
+function getActiveHumans(room: Room, excludePlayerId?: string): Player[] {
+  const leftSet = activelyLeftPlayers.get(room.code) ?? new Set<string>();
+  return room.players.filter(
+    (p) => !p.isBot && !leftSet.has(p.id) && p.id !== excludePlayerId,
+  );
+}
+
+/** Transfer host to first non-bot player (by seat order) if current host is leaving */
+function transferHostIfNeeded(room: Room, departingPlayerId: string): void {
+  if (room.hostId !== departingPlayerId) return;
+  const candidate = room.players
+    .filter((p) => !p.isBot && p.id !== departingPlayerId)
+    .sort((a, b) => (a.seat ?? 99) - (b.seat ?? 99))[0];
+  if (candidate) {
+    room.hostId = candidate.id;
+    console.log(`[${room.code}] [Room] host transferred to "${candidate.name}"`);
+  }
+}
+
 function scheduleRoomCleanup(io: Server, room: Room): void {
   const allHumansDisconnected = room.players
     .filter((p) => !p.isBot)
@@ -1582,7 +1610,6 @@ function scheduleRoomCleanup(io: Server, room: Room): void {
     return;
   }
 
-  // All humans disconnected — schedule deletion in 1 hour
   if (roomCleanupTimers.has(room.code)) return; // already scheduled
   const timer = setTimeout(() => {
     roomCleanupTimers.delete(room.code);
@@ -1592,15 +1619,81 @@ function scheduleRoomCleanup(io: Server, room: Room): void {
       .filter((p) => !p.isBot)
       .every((p) => (r.disconnectedPlayerIds ?? []).includes(p.id));
     if (stillAllGone) {
+      activelyLeftPlayers.delete(r.code);
       deleteRoom(r.code);
-      console.log(`[${r.code}] [Room] deleted — all humans disconnected for 15 minutes`);
+      console.log(`[${r.code}] [Room] deleted — all players offline for 10 minutes`);
     }
-  }, 15 * 60 * 1000);
+  }, 10 * 60 * 1000);
   roomCleanupTimers.set(room.code, timer);
-  console.log(`[${room.code}] [Room] all humans disconnected, will delete in 15 minutes`);
+  console.log(`[${room.code}] [Room] all players offline, will delete in 10 minutes`);
 }
 
-function handleLeave(io: Server, socket: Socket): void {
+/** Active leave: player clicked "离开" (confirmed). Cannot rejoin. */
+function handleActiveLeave(io: Server, socket: Socket): void {
+  const info = unregisterSocket(socket.id);
+  if (!info) return;
+
+  const { roomCode, playerId } = info;
+  const room = getRoomByCode(roomCode);
+  if (!room) return;
+
+  const player = room.players.find((p) => p.id === playerId);
+  socket.leave(roomCode);
+
+  if (!player || player.isBot) return;
+
+  console.log(`[${room.code}] [Room] "${player.name}" actively left`);
+
+  if (room.phase === GamePhase.WAITING) {
+    room.players = room.players.filter((p) => p.id !== playerId);
+    if (room.players.filter((p) => !p.isBot).length === 0) {
+      deleteRoom(room.code);
+      console.log(`[${room.code}] [Room] deleted — no players remaining`);
+      return;
+    }
+    transferHostIfNeeded(room, playerId);
+    updateRoom(room);
+    broadcastRoomUpdate(io, room);
+    return;
+  }
+
+  // Game phase: check if any other active humans remain
+  const others = getActiveHumans(room, playerId);
+  if (others.length === 0) {
+    activelyLeftPlayers.delete(roomCode);
+    deleteRoom(roomCode);
+    console.log(`[${room.code}] [Room] deleted — no active players remaining`);
+    return;
+  }
+
+  // Mark as actively left — cannot rejoin
+  let leftSet = activelyLeftPlayers.get(roomCode);
+  if (!leftSet) { leftSet = new Set(); activelyLeftPlayers.set(roomCode, leftSet); }
+  leftSet.add(playerId);
+
+  // Cancel any pending reconnect grace timer
+  const key = `${roomCode}:${playerId}`;
+  const existing = disconnectTimers.get(key);
+  if (existing) { clearTimeout(existing); disconnectTimers.delete(key); }
+
+  // Enter managed immediately
+  if (!(room.managedPlayerIds ?? []).includes(playerId)) {
+    room.managedPlayerIds = [...(room.managedPlayerIds ?? []), playerId];
+  }
+  if (!(room.disconnectedPlayerIds ?? []).includes(playerId)) {
+    room.disconnectedPlayerIds = [...(room.disconnectedPlayerIds ?? []), playerId];
+  }
+
+  updateRoom(room);
+  broadcastRoomUpdate(io, room);
+  scheduleRoomCleanup(io, room);
+  scheduleBotDiceRoll(io, room);
+  scheduleBotTurn(io, room);
+  scheduleBotTribute(io, room);
+}
+
+/** Passive disconnect: network drop / browser close. Can rejoin within 10 minutes. */
+function handlePassiveLeave(io: Server, socket: Socket): void {
   const info = unregisterSocket(socket.id);
   if (!info) return;
 
@@ -1612,24 +1705,28 @@ function handleLeave(io: Server, socket: Socket): void {
   socket.leave(roomCode);
 
   if (!player || player.isBot) {
-    // Bots and unknown sockets: remove immediately
     room.players = room.players.filter((p) => p.id !== playerId);
     if (room.players.length === 0) { deleteRoom(room.code); return; }
     updateRoom(room); broadcastRoomUpdate(io, room);
     return;
   }
 
-  console.log(`[${room.code}] [Room] "${player.name}" left/disconnected`);
+  console.log(`[${room.code}] [Room] "${player.name}" disconnected`);
 
   if (room.phase === GamePhase.WAITING) {
-    // In lobby: remove immediately
+    // Waiting room: kick immediately
     room.players = room.players.filter((p) => p.id !== playerId);
-    if (room.players.length === 0) { deleteRoom(room.code); return; }
-    updateRoom(room); broadcastRoomUpdate(io, room);
+    if (room.players.filter((p) => !p.isBot).length === 0) {
+      deleteRoom(room.code);
+      return;
+    }
+    transferHostIfNeeded(room, playerId);
+    updateRoom(room);
+    broadcastRoomUpdate(io, room);
     return;
   }
 
-  // Mid-game: keep player, mark as disconnected, broadcast
+  // Game: mark disconnected, allow rejoin
   const key = `${roomCode}:${playerId}`;
   const existing = disconnectTimers.get(key);
   if (existing) clearTimeout(existing);
@@ -1641,7 +1738,7 @@ function handleLeave(io: Server, socket: Socket): void {
   broadcastRoomUpdate(io, room);
   scheduleRoomCleanup(io, room);
 
-  // After 30s with no rejoin: enter 托管 mode
+  // After 30s with no rejoin: enter 托管
   const timer = setTimeout(() => {
     const r = getRoomByCode(roomCode);
     disconnectTimers.delete(key);
@@ -1654,7 +1751,7 @@ function handleLeave(io: Server, socket: Socket): void {
     scheduleBotDiceRoll(io, r);
     scheduleBotTurn(io, r);
     scheduleBotTribute(io, r);
-    console.log(`[${roomCode}] [Room] "${player.name}" entered 托管 after disconnect timeout`);
+    console.log(`[${roomCode}] [Room] "${player.name}" entered 托管 after disconnect`);
   }, 30000);
   disconnectTimers.set(key, timer);
 }

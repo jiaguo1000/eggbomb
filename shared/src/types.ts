@@ -197,6 +197,7 @@ export const SOCKET_EVENTS = {
   TRIBUTE_STATE: 'tribute_state',
   NEW_GAME_STARTING: 'new_game_starting',
   REJOIN_SUCCESS: 'rejoin_success',
+  REJOIN_FAIL: 'rejoin_fail',
   HINT: 'hint',
   TRIBUTE_REVEAL: 'tribute_reveal',
   ERROR: 'error',
