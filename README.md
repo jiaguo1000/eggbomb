@@ -1,21 +1,21 @@
 # eggbomb
 
-Online 掼蛋 (Guan Dan) card game — create a room, invite friends, and play instantly in the browser.
+Online 掼蛋 (Guan Dan) card game. Create a room, invite friends, and play instantly in the browser.
 
 ## Features
 
 - Real-time multiplayer via WebSocket (Socket.io)
-- Full 掼蛋 rules: level progression 2–A, tribute/return, 抗贡, wildcards, all hand types
-- Bot players powered by Monte Carlo Tree Search (MCTS) — fills empty seats or can be added by the host; two difficulty levels (easy / medium)
-- Autopilot (托管) mode — delegate your turn to the MCTS bot
+- Full 掼蛋 rules: level progression 2-A, tribute/return, 抗贡, wildcards, all hand types
+- Bot players powered by Information Set Monte Carlo Tree Search (ISMCTS), which handles hidden information (unknown opponent hands). Fills empty seats or can be added by the host. Two difficulty levels (easy / medium)
+- Autopilot (托管) mode to delegate your turn to the bot
 - Dice roll to decide first player, with tie re-roll
 - Disconnect/reconnect: players stay in the game for 30s after disconnect, then enter autopilot
-- Host-selectable starting level (2–A)
+- Host-selectable starting level (2-A)
 - Hint button suggests the smallest valid play
 
 ## Tech Stack
 
-- **Frontend**: React + TypeScript + Vite — responsive layout, optimized for both desktop and mobile landscape
+- **Frontend**: React + TypeScript + Vite, responsive layout optimized for both desktop and mobile
 - **Backend**: Node.js + Express + Socket.io
 - **Shared**: TypeScript types and game logic shared between client and server
 - **Monorepo**: npm workspaces
@@ -50,15 +50,6 @@ Client runs at `http://localhost:5173`, server at `http://localhost:3001`.
 | `npm run dev` | Start everything in dev mode with hot reload |
 | `npm run build` | Build all packages for production |
 | `npm start` | Start the production server |
-
-To build and run in production:
-
-```bash
-npm run build
-npm start
-```
-
-Then serve `client/dist/` with a static file server or reverse proxy pointing to the same origin as the backend.
 
 ## Deployment
 
