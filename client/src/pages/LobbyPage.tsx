@@ -131,7 +131,12 @@ const LobbyPage: React.FC<LobbyPageProps> = ({ playerName, onPlayerNameChange })
           )}
 
           {/* Footer — desktop only */}
-          {!compact && <p style={styles.footer}>掼蛋 · 4人扑克牌游戏 · 两队对战</p>}
+          {!compact && (
+            <div style={{ textAlign: 'center' }}>
+              <p style={styles.footer}>掼蛋 · 4人扑克牌游戏 · 两队对战</p>
+              <p style={{ ...styles.footer, marginTop: '0.25rem', fontSize: '0.68rem', color: '#555' }}>© 2026 Jia Guo · Apache 2.0</p>
+            </div>
+          )}
         </div>
 
       </div>
