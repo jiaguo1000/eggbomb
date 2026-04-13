@@ -103,12 +103,12 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
       </div>
 
       {/* Table layout */}
-      <div style={{ ...styles.tableWrapper, ...(compact ? { padding: '0.2rem 0.5rem' } : {}) }}>
-        <div style={{ ...styles.tableGrid, ...(compact ? { gap: '0.3rem', maxWidth: '560px' } : {}) }}>
+      <div style={styles.tableWrapper}>
+        <div style={{ ...styles.tableGrid, ...(compact ? { maxWidth: '560px' } : {}) }}>
           {/* North */}
           <div style={{ gridArea: 'north', display: 'flex', justifyContent: 'center' }}>
             <div style={{ display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: 'center', gap: '4px' }}>
-              <SeatDisplay seat={2} player={getPlayerAtSeat(2)} isCurrentPlayer={me?.seat === 2} onSitDown={handleSitDown} compact={compact} />
+              <SeatDisplay seat={2} player={getPlayerAtSeat(2)} isCurrentPlayer={me?.seat === 2} onSitDown={handleSitDown} compact={compact} isReady={isReady} onToggleReady={handleToggleReady} />
               {!getPlayerAtSeat(2) && isHost && (
                 <div style={styles.botBtnGroup}>
                   <button style={styles.botBtn} onClick={() => handleAddBot(2 as PlayerSeat, 'easy')}>+简单</button>
@@ -124,7 +124,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
           {/* West */}
           <div style={{ gridArea: 'west', display: 'flex', alignItems: 'center' }}>
             <div style={{ display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: 'center', gap: '4px' }}>
-              <SeatDisplay seat={1} player={getPlayerAtSeat(1)} isCurrentPlayer={me?.seat === 1} onSitDown={handleSitDown} compact={compact} />
+              <SeatDisplay seat={1} player={getPlayerAtSeat(1)} isCurrentPlayer={me?.seat === 1} onSitDown={handleSitDown} compact={compact} isReady={isReady} onToggleReady={handleToggleReady} />
               {!getPlayerAtSeat(1) && isHost && (
                 <div style={styles.botBtnGroup}>
                   <button style={styles.botBtn} onClick={() => handleAddBot(1 as PlayerSeat, 'easy')}>+简单</button>
@@ -139,7 +139,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
 
           {/* Center table */}
           <div style={styles.tableCenter}>
-            <div style={{ ...styles.tableInner, ...(compact ? { width: '160px', padding: '0.4rem 0.6rem', gap: '0.3rem' } : {}) }}>
+            <div style={styles.tableInner}>
               {!compact && <span style={styles.tableTitle}>掼蛋</span>}
               <div style={styles.teamInfo}>
                 <div style={styles.teamRow}>
@@ -192,7 +192,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
           {/* East */}
           <div style={{ gridArea: 'east', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
             <div style={{ display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: 'center', gap: '4px' }}>
-              <SeatDisplay seat={3} player={getPlayerAtSeat(3)} isCurrentPlayer={me?.seat === 3} onSitDown={handleSitDown} compact={compact} />
+              <SeatDisplay seat={3} player={getPlayerAtSeat(3)} isCurrentPlayer={me?.seat === 3} onSitDown={handleSitDown} compact={compact} isReady={isReady} onToggleReady={handleToggleReady} />
               {!getPlayerAtSeat(3) && isHost && (
                 <div style={styles.botBtnGroup}>
                   <button style={styles.botBtn} onClick={() => handleAddBot(3 as PlayerSeat, 'easy')}>+简单</button>
@@ -208,7 +208,7 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
           {/* South */}
           <div style={{ gridArea: 'south', display: 'flex', justifyContent: 'center' }}>
             <div style={{ display: 'flex', flexDirection: compact ? 'row' : 'column', alignItems: 'center', gap: '4px' }}>
-              <SeatDisplay seat={0} player={getPlayerAtSeat(0)} isCurrentPlayer={me?.seat === 0} onSitDown={handleSitDown} compact={compact} />
+              <SeatDisplay seat={0} player={getPlayerAtSeat(0)} isCurrentPlayer={me?.seat === 0} onSitDown={handleSitDown} compact={compact} isReady={isReady} onToggleReady={handleToggleReady} />
               {!getPlayerAtSeat(0) && isHost && (
                 <div style={styles.botBtnGroup}>
                   <button style={styles.botBtn} onClick={() => handleAddBot(0 as PlayerSeat, 'easy')}>+简单</button>
@@ -242,27 +242,28 @@ const RoomPage: React.FC<RoomPageProps> = ({ room, playerId, onLeave }) => {
         );
       })()}
 
-      {/* Action bar */}
-      <div style={{ ...styles.actionBar, ...(compact ? { padding: '0.2rem 1rem' } : {}) }}>
-        {!hasSeat ? (
-          <p style={{ ...styles.actionHint, ...(compact ? { fontSize: '0.88rem' } : {}) }}>点击空座位入座</p>
-        ) : (
-          <button
-            style={{
-              ...styles.readyBtn,
-              background: isReady
-                ? 'linear-gradient(135deg, #388e3c, #2e7d32)'
-                : 'linear-gradient(135deg, #ffd700, #ffb300)',
-              color: isReady ? '#e8f5e9' : '#1a1a1a',
-              ...(compact ? { padding: '0.5rem 1.5rem', fontSize: '0.9rem' } : {}),
-            }}
-            onClick={handleToggleReady}
-          >
-            {isReady ? '✓ 已准备 (取消)' : '准备'}
-          </button>
-        )}
-        {!compact && <p style={styles.seatedStatus}>{seatedCount}/4 人已入座</p>}
-      </div>
+      {/* Action bar — desktop only; compact uses in-seat ready button */}
+      {!compact && (
+        <div style={styles.actionBar}>
+          {!hasSeat ? (
+            <p style={styles.actionHint}>点击空座位入座</p>
+          ) : (
+            <button
+              style={{
+                ...styles.readyBtn,
+                background: isReady
+                  ? 'linear-gradient(135deg, #388e3c, #2e7d32)'
+                  : 'linear-gradient(135deg, #ffd700, #ffb300)',
+                color: isReady ? '#e8f5e9' : '#1a1a1a',
+              }}
+              onClick={handleToggleReady}
+            >
+              {isReady ? '✓ 已准备 (取消)' : '准备'}
+            </button>
+          )}
+          <p style={styles.seatedStatus}>{seatedCount}/4 人已入座</p>
+        </div>
+      )}
     </div>
   );
 };
@@ -403,7 +404,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '0.75rem 1.5rem',
+    padding: 'clamp(0.1rem, 1.5vh, 0.75rem) clamp(0.3rem, 2vw, 1.5rem)',
     overflow: 'hidden',
   },
   tableGrid: {
@@ -415,7 +416,7 @@ const styles: Record<string, React.CSSProperties> = {
     `,
     gridTemplateColumns: 'auto 1fr auto',
     gridTemplateRows: 'auto 1fr auto',
-    gap: '0.75rem',
+    gap: 'clamp(0.2rem, 1.5vh, 0.75rem)',
     width: '100%',
     maxWidth: '700px',
   },
@@ -429,13 +430,13 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(10,60,30,0.4)',
     border: '2px solid rgba(255,255,255,0.08)',
     borderRadius: '24px',
-    width: '220px',
+    width: 'clamp(140px, 28vw, 220px)',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '0.5rem',
-    padding: '0.75rem 1rem',
+    gap: 'clamp(0.15rem, 1vh, 0.5rem)',
+    padding: 'clamp(0.3rem, 1.2vh, 0.75rem) clamp(0.4rem, 1.5vw, 1rem)',
   },
   tableTitle: {
     fontSize: '1.8rem',
@@ -447,12 +448,12 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.4rem',
-    width: '100%',
-    paddingInline: '0.5rem',
+    alignItems: 'center',
   },
   teamRow: {
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: '0.4rem',
   },
   teamDot: {
@@ -523,13 +524,14 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#ffd700',
   },
   actionBar: {
-    padding: '1rem 1.5rem',
+    padding: 'clamp(0.3rem, 1.2vh, 1rem) 1.5rem',
     borderTop: '1px solid rgba(255,255,255,0.08)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: '1.5rem',
     flexWrap: 'wrap',
+    flexShrink: 0,
   },
   actionHint: {
     color: '#666',

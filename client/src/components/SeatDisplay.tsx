@@ -7,6 +7,8 @@ interface SeatDisplayProps {
   isCurrentPlayer: boolean;
   onSitDown: (seat: PlayerSeat) => void;
   compact?: boolean;
+  isReady?: boolean;
+  onToggleReady?: () => void;
 }
 
 const SEAT_LABELS: Record<PlayerSeat, string> = {
@@ -21,7 +23,7 @@ const TEAM_COLORS: Record<number, string> = {
   1: '#ef9a9a', // Team 1 (seats 1 & 3) — red
 };
 
-const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer, onSitDown, compact }) => {
+const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer, onSitDown, compact, isReady, onToggleReady }) => {
   const isEmpty = !player;
   const teamColor = player?.teamId !== null && player?.teamId !== undefined
     ? TEAM_COLORS[player.teamId]
@@ -39,7 +41,7 @@ const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer
         ...styles.seat,
         ...(isEmpty ? styles.emptySeat : styles.occupiedSeat),
         ...(isCurrentPlayer ? styles.currentPlayerSeat : {}),
-        ...(compact ? { minHeight: '48px', minWidth: '80px', padding: '0.2rem 0.5rem', gap: '0.15rem' } : {}),
+        ...(compact ? { minHeight: 'clamp(40px, 8vh, 60px)', minWidth: '75px', padding: 'clamp(0.1rem, 0.8vh, 0.2rem) 0.5rem', gap: '0.1rem' } : {}),
         cursor: isEmpty ? 'pointer' : 'default',
         borderColor: isCurrentPlayer ? '#ffd700' : isEmpty ? 'rgba(255,255,255,0.15)' : teamColor,
       }}
@@ -79,7 +81,7 @@ const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer
             {player!.name}
             {isCurrentPlayer && ' (你)'}
           </span>
-          <div style={styles.statusRow}>
+          <div style={{ ...styles.statusRow, flexWrap: 'nowrap' }}>
             {player!.isBot ? (
               <>
                 <span style={styles.botBadge}>机器人</span>
@@ -88,18 +90,34 @@ const SeatDisplay: React.FC<SeatDisplayProps> = ({ seat, player, isCurrentPlayer
                 </span>
               </>
             ) : (
-              <span
-                style={{
-                  ...styles.readyBadge,
-                  background: player!.isReady ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.05)',
-                  color: player!.isReady ? '#81c784' : '#888',
-                  borderColor: player!.isReady ? '#81c784' : 'rgba(255,255,255,0.1)',
-                }}
-              >
-                {player!.isReady ? '已准备' : '未准备'}
-              </span>
+              /* hide badge for current player in compact — the ready button below shows the state */
+              !(compact && isCurrentPlayer && onToggleReady) && (
+                <span
+                  style={{
+                    ...styles.readyBadge,
+                    background: player!.isReady ? 'rgba(76,175,80,0.2)' : 'rgba(255,255,255,0.05)',
+                    color: player!.isReady ? '#81c784' : '#888',
+                    borderColor: player!.isReady ? '#81c784' : 'rgba(255,255,255,0.1)',
+                  }}
+                >
+                  {player!.isReady ? '已准备' : '未准备'}
+                </span>
+              )
             )}
           </div>
+          {compact && isCurrentPlayer && onToggleReady && (
+            <button
+              style={{
+                ...styles.readyBtn,
+                background: isReady ? 'rgba(56,142,60,0.35)' : 'linear-gradient(135deg, #ffd700, #ffb300)',
+                color: isReady ? '#81c784' : '#1a1a1a',
+                border: isReady ? '1px solid rgba(129,199,132,0.6)' : 'none',
+              }}
+              onClick={(e) => { e.stopPropagation(); onToggleReady(); }}
+            >
+              {isReady ? '✓ 已准备 (取消)' : '准备'}
+            </button>
+          )}
         </>
       )}
     </div>
@@ -184,6 +202,16 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '20px',
     border: '1px solid',
   },
+  readyBtn: {
+    marginTop: '0.25rem',
+    padding: '0.2rem 0',
+    width: '100%',
+    borderRadius: '6px',
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    letterSpacing: '0.02em',
+  },
   botBadge: {
     fontSize: '0.78rem',
     padding: '0.2rem 0.5rem',
@@ -191,6 +219,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(156,39,176,0.2)',
     color: '#ce93d8',
     border: '1px solid #ce93d8',
+    whiteSpace: 'nowrap',
   },
   diffBadgeEasy: {
     fontSize: '0.78rem',
@@ -199,6 +228,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(255,255,255,0.06)',
     color: '#aaa',
     border: '1px solid rgba(255,255,255,0.15)',
+    whiteSpace: 'nowrap',
   },
   diffBadgeMedium: {
     fontSize: '0.78rem',
@@ -207,6 +237,7 @@ const styles: Record<string, React.CSSProperties> = {
     background: 'rgba(79,195,247,0.15)',
     color: '#4fc3f7',
     border: '1px solid rgba(79,195,247,0.35)',
+    whiteSpace: 'nowrap',
   },
 };
 

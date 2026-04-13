@@ -266,6 +266,10 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
   return (
     <div style={styles.container}>
       <style>{`@keyframes pulse { from { opacity: 1; transform: scale(1); } to { opacity: 0.7; transform: scale(1.06); } }`}</style>
+      {/* Floating toast — doesn't affect layout */}
+      {message && (
+        <div style={styles.toast}>{message}</div>
+      )}
       {/* Header bar */}
       <div style={{ ...styles.header, ...(compact ? { padding: '2px 8px' } : {}) }}>
         <span style={{ ...styles.headerInfo, ...(compact ? { fontSize: '0.88rem' } : {}) }}>房间：{currentRoom.code}</span>
@@ -345,11 +349,6 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
 
           {/* Center: turn indicator + last play (compact: text summary) */}
           <div style={{ ...styles.centerArea, ...(compact ? { height: 'auto', minHeight: '60px' } : {}) }}>
-            {message && (
-              <span style={{ background: 'rgba(0,0,0,0.75)', color: '#fff', padding: '5px 16px', borderRadius: '16px', fontSize: '0.88rem', border: '1px solid rgba(255,255,255,0.15)', marginBottom: '8px' }}>
-                {message}
-              </span>
-            )}
             {isMyTurn ? (
               <div style={{ ...styles.turnIndicator, ...(compact ? { fontSize: '1.1rem', marginTop: '0' } : {}), animation: 'pulse 0.8s ease-in-out infinite alternate', ...(turnCountdown !== null && turnCountdown <= 10 ? { color: '#ff6b6b', textShadow: '0 0 16px rgba(255,80,80,0.9)' } : {}) }}>
                 ⚡ 轮到你了！{turnCountdown !== null && <span style={{ marginLeft: '8px' }}>({turnCountdown}s)</span>}
@@ -500,7 +499,7 @@ const GamePage: React.FC<GamePageProps> = ({ room, playerId, hand, currentLevel,
                   </>
                 )}
                 {isManaged && (
-                  <div style={{ ...styles.managedBanner, ...(compact ? { fontSize: '0.78rem', padding: '2px 8px' } : {}) }}>托管中，系统自动出牌</div>
+                  <div style={{ ...styles.managedBanner, ...(compact ? { fontSize: '0.85rem', padding: '4px 10px' } : {}) }}>托管中，系统自动出牌</div>
                 )}
                 <button
                   style={{ ...styles.actionBtn, ...(isManaged ? styles.managedActiveBtn : styles.managedBtn), ...(compact ? { padding: '8px 14px', fontSize: '0.9rem' } : {}) }}
@@ -1089,10 +1088,10 @@ const EmptySeat: React.FC<{ seat: PlayerSeat }> = ({ seat }) => (
 );
 
 const oppStyles: Record<string, React.CSSProperties> = {
-  container: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '10px 14px', textAlign: 'center', minWidth: '90px' },
+  container: { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: 'clamp(4px, 1vh, 10px) clamp(8px, 1.5vh, 14px)', textAlign: 'center', minWidth: '90px' },
   active: { border: '2px solid #ffd700', background: 'rgba(255,215,0,0.1)' },
-  name: { color: '#eee', fontWeight: 600, fontSize: '0.9rem', marginBottom: '4px' },
-  cardCount: { color: '#4fc3f7', fontSize: '1.1rem', fontWeight: 700 },
+  name: { color: '#eee', fontWeight: 600, fontSize: 'clamp(0.7rem, 2vh, 0.9rem)', marginBottom: '4px' },
+  cardCount: { color: '#4fc3f7', fontSize: 'clamp(0.75rem, 2.5vh, 1.1rem)', fontWeight: 700 },
   finished: { color: '#81c784', fontSize: '0.85rem', fontWeight: 600 },
   turnBadge: { background: '#ffd700', color: '#1a1a1a', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px' },
   managedBadge: { background: 'rgba(100,180,255,0.2)', color: '#90caf9', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600, padding: '1px 5px', border: '1px solid rgba(100,180,255,0.35)' },
@@ -1112,27 +1111,28 @@ const styles: Record<string, React.CSSProperties> = {
   teamLevelMine: { color: '#ffd700', fontWeight: 700, background: 'rgba(255,215,0,0.15)', border: '1px solid rgba(255,215,0,0.3)' },
   teamLevelPlaying: { border: '1px solid rgba(255,215,0,0.2)' },
   leaveBtn: { background: 'transparent', border: '1px solid #555', color: '#aaa', borderRadius: '6px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem' },
-  table: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', gap: '8px' },
-  topArea: { display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', gap: '0', height: '180px' },
-  opponentWithPlay: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0', height: '180px' },
-  middleRow: { display: 'flex', alignItems: 'center', gap: '12px', width: '100%', maxWidth: '800px', flex: 1 },
+  table: { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px', gap: '8px' },
+  topArea: { display: 'flex', justifyContent: 'center', flexDirection: 'column', alignItems: 'center', gap: '0', height: 'clamp(70px, 18vh, 180px)' },
+  opponentWithPlay: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0', height: 'clamp(70px, 18vh, 180px)' },
+  middleRow: { display: 'flex', alignItems: 'center', gap: '12px', width: '100%', maxWidth: '800px', flex: 1, minHeight: 0 },
   sideArea: { display: 'flex', alignItems: 'center', minWidth: '100px' },
-  centerArea: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '160px', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' },
+  centerArea: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 'clamp(50px, 14vh, 160px)', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)' },
   roundPlaysGrid: { display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', padding: '8px', overflowY: 'auto', maxHeight: '200px' },
   roundPlayEntry: { display: 'flex', alignItems: 'center', gap: '8px' },
   roundPlayName: { color: '#aaa', fontSize: '0.75rem', minWidth: '40px', textAlign: 'right', flexShrink: 0 },
   roundPlayCards: { display: 'flex', gap: '3px', flexWrap: 'wrap' },
-  noLastPlay: { color: '#666', fontSize: '1.05rem' },
-  oppPlayRow: { height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  noLastPlay: { color: '#666', fontSize: 'clamp(0.75rem, 2.2vh, 1.05rem)' },
+  oppPlayRow: { height: 'clamp(24px, 7vh, 80px)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   compactPlayRow: { height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   myPlayRow: { height: '80px', display: 'flex', alignItems: 'center' },
-  turnIndicator: { marginTop: '8px', color: '#ffd700', fontWeight: 700, fontSize: '1.5rem', textShadow: '0 0 12px rgba(255,215,0,0.8)', letterSpacing: '0.02em' },
-  myArea: { width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '8px' },
+  turnIndicator: { marginTop: '8px', color: '#ffd700', fontWeight: 700, fontSize: 'clamp(0.9rem, 3vh, 1.5rem)', textShadow: '0 0 12px rgba(255,215,0,0.8)', letterSpacing: '0.02em' },
+  myArea: { width: '100%', maxWidth: '900px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 },
   myInfo: { display: 'flex', alignItems: 'center', gap: '12px' },
   myName: { color: '#ffd700', fontWeight: 600, fontSize: '1rem' },
   myCardCount: { color: '#aaa', fontSize: '0.92rem' },
   finishedBadge: { background: '#81c784', color: '#1a1a1a', borderRadius: '4px', padding: '2px 8px', fontSize: '0.8rem', fontWeight: 700 },
   handScroll: { overflowX: 'auto', padding: '8px 8px 16px', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', minHeight: '118px' },
+  toast: { position: 'fixed', top: '60px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.82)', color: '#fff', padding: '7px 20px', borderRadius: '20px', fontSize: '0.88rem', border: '1px solid rgba(255,255,255,0.15)', zIndex: 1000, pointerEvents: 'none', whiteSpace: 'nowrap' },
   actions: { display: 'flex', gap: '10px', justifyContent: 'center', paddingBottom: 'env(safe-area-inset-bottom)' },
   actionBtn: { padding: '10px 28px', borderRadius: '8px', fontSize: '1rem', fontWeight: 700, cursor: 'pointer', border: 'none', transition: 'opacity 0.2s' },
   clearBtn: { background: 'rgba(255,255,255,0.1)', color: '#ccc' },
@@ -1141,7 +1141,7 @@ const styles: Record<string, React.CSSProperties> = {
   disabledBtn: { opacity: 0.4, cursor: 'not-allowed' },
   managedBtn: { background: 'rgba(100,180,255,0.15)', color: '#90caf9', padding: '10px 18px', fontSize: '0.85rem' },
   managedActiveBtn: { background: 'rgba(100,200,100,0.25)', color: '#81c784', padding: '10px 18px', fontSize: '0.85rem' },
-  managedBanner: { color: '#81c784', fontSize: '0.85rem', padding: '8px 16px', background: 'rgba(100,200,100,0.12)', borderRadius: '8px', border: '1px solid rgba(100,200,100,0.25)' },
+  managedBanner: { display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#81c784', fontSize: '0.85rem', padding: '8px 16px', background: 'rgba(100,200,100,0.12)', borderRadius: '8px', border: '1px solid rgba(100,200,100,0.25)' },
   hintBtn: { background: 'rgba(100,220,220,0.15)', color: '#80deea', padding: '10px 18px', fontSize: '0.9rem' },
 };
 
