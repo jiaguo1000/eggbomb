@@ -1,6 +1,18 @@
-# eggbomb
+<div align="center">
+
+<img src="client/public/bomb-logo.png" width="120" alt="EggBomb logo" />
+
+# EggBomb
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Socket.io](https://img.shields.io/badge/Socket.io-010101?logo=socket.io&logoColor=white)](https://socket.io/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 Online 掼蛋 (Guan Dan) card game. Create a room, invite friends, and play instantly in the browser.
+
+</div>
 
 ## Features
 

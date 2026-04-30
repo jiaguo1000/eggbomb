@@ -64,7 +64,7 @@
         gap: 20px;
         padding: 32px 24px;
       }
-      #pwa-overlay .pwa-icon { font-size: 4rem; }
+      #pwa-overlay .pwa-icon { width: 96px; height: 96px; }
       #pwa-overlay .pwa-title { font-size: 1.4rem; font-weight: 700; color: #ffd700; }
       #pwa-overlay .pwa-subtitle { font-size: 0.95rem; color: #aaa; line-height: 1.5; }
       #pwa-overlay .pwa-steps { display: flex; flex-direction: column; gap: 12px; max-width: 320px; }
@@ -93,6 +93,27 @@
         height: 100%;
       }
 
+      /* Unified button feedback */
+      button {
+        transition: transform 0.12s ease, filter 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+      }
+      @media (hover: hover) {
+        button:not(:disabled):hover {
+          filter: brightness(1.08);
+        }
+      }
+      button:not(:disabled):active {
+        transform: translateY(1px);
+        filter: brightness(0.94);
+      }
+      button:disabled {
+        cursor: not-allowed;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        button { transition: none; }
+        button:not(:disabled):active { transform: none; }
+      }
+
       /* Applied only in standalone mode via JS */
       body.standalone-mode {
         overflow: hidden;
@@ -108,7 +129,7 @@
   <body>
     <!-- PWA install prompt (shown on mobile browsers, hidden in standalone mode) -->
     <div id="pwa-overlay">
-      <div class="pwa-icon">💣</div>
+      <img class="pwa-icon" src="/bomb-logo.png" alt="EggBomb" />
       <div class="pwa-title" id="pwa-title">请先安装掼蛋</div>
       <div class="pwa-subtitle" id="pwa-subtitle">为了最佳体验，请将游戏添加到主屏幕后再打开</div>
 
@@ -116,11 +137,11 @@
       <div class="pwa-steps" id="pwa-steps-ios-safari" style="display:none">
         <div class="pwa-step">
           <div class="pwa-step-num">1</div>
-          <div class="pwa-step-text">点击底部的 <b>分享</b> 按钮 <b>⬆</b></div>
+          <div class="pwa-step-text">点击地址栏右侧的 <b>···</b> 按钮</div>
         </div>
         <div class="pwa-step">
           <div class="pwa-step-num">2</div>
-          <div class="pwa-step-text">选择 <b>添加到主屏幕</b></div>
+          <div class="pwa-step-text">在菜单中选择 <b>分享</b> → <b>添加到主屏幕</b></div>
         </div>
         <div class="pwa-step">
           <div class="pwa-step-num">3</div>
@@ -136,11 +157,11 @@
         </div>
         <div class="pwa-step">
           <div class="pwa-step-num">2</div>
-          <div class="pwa-step-text">在 Safari 底部点击 <b>分享</b> 按钮 <b>⬆</b></div>
+          <div class="pwa-step-text">在 Safari 中点击地址栏旁的 <b>···</b> 按钮</div>
         </div>
         <div class="pwa-step">
           <div class="pwa-step-num">3</div>
-          <div class="pwa-step-text">选择 <b>添加到主屏幕</b>，然后从图标打开游戏</div>
+          <div class="pwa-step-text">选择 <b>分享</b> → <b>添加到主屏幕</b>，然后从图标打开游戏</div>
         </div>
       </div>
 
