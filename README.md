@@ -12,18 +12,36 @@
 
 Online 掼蛋 (Guan Dan) card game. Create a room, invite friends, and play instantly in the browser.
 
+[![Play Online](https://img.shields.io/badge/Play_Online-ffd700?style=for-the-badge)](https://eggbomb.duckdns.org)
+
+</div>
+
+## About 掼蛋 (Guan Dan)
+
+掼蛋 is a 4-player team card game where partners race to shed cards before the opposing team. Valid combinations range from singles to multi-card bombs, with wildcards that can substitute any rank.
+
+<div align="center">
+  <img src="docs/combos.svg" alt="Card combinations" width="340" />
 </div>
 
 ## Features
 
-- Real-time multiplayer via WebSocket (Socket.io)
-- Full 掼蛋 rules: level progression 2-A, tribute/return, 抗贡, wildcards, all hand types
-- Bot players powered by Information Set Monte Carlo Tree Search (ISMCTS), which handles hidden information (unknown opponent hands). Fills empty seats or can be added by the host. Two difficulty levels (easy / medium)
-- Autopilot (托管) mode to delegate your turn to the bot
-- Dice roll to decide first player, with tie re-roll
-- Disconnect/reconnect: players stay in the game for 30s after disconnect, then enter autopilot
-- Host-selectable starting level (2-A)
+**Gameplay**
+- Full 掼蛋 rules (level progression 2-A, tribute system, wildcards, all hand types)
+- Host-selectable starting level
+- Dice roll for first player, with tie re-roll
 - Hint button suggests the smallest valid play
+
+**AI Bots**
+- Information Set Monte Carlo Tree Search (ISMCTS) — handles hidden information (unknown opponent hands)
+- Fills empty seats or can be added by the host
+- Two difficulty levels: easy / medium
+- Autopilot (托管) mode delegates your turn to the bot
+
+**Multiplayer & Resilience**
+- Real-time gameplay over WebSocket
+- Disconnect/reconnect grace: 30s in-game window before entering autopilot
+- PWA-installable on iOS / Android with home-screen icons
 
 ## Tech Stack
 
@@ -65,7 +83,8 @@ Client runs at `http://localhost:5173`, server at `http://localhost:3001`.
 
 ## Deployment
 
-Designed to run on a single VPS with Nginx and PM2.
+<details>
+<summary>Single VPS with Nginx + PM2 (click to expand)</summary>
 
 **1. Build**
 
@@ -111,3 +130,5 @@ server {
 ```
 
 Add SSL with `certbot --nginx` for HTTPS.
+
+</details>
