@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="client/public/bomb-logo.png" width="120" alt="EggBomb logo" />
-
-# EggBomb
+<img src="docs/title.svg" width="380" alt="EggBomb" />
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black)](https://react.dev/)
